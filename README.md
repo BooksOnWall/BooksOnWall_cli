@@ -11,6 +11,6 @@
 
 ## Install 
 ```
-$ curl http://foo.com/script.sh | bash -s arg1 arg2
+$ curl https://git.pulsar113.org/BooksOnWall/BooksOnWall_cli/raw/master/create_bow.sh | bash -s MyApp https://api.booksonwall.art
 ```
 
