@@ -10,4 +10,7 @@
 [react-vivo-cli](https://docs.viromedia.com/docs)
 
 ## Install 
+```
+$ curl http://foo.com/script.sh | bash -s arg1 arg2
+```
 
