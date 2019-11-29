@@ -19,6 +19,13 @@ The Second the URL of the server side api
 let's say you want to create an app with BooksOnWall as a name and https://api.booksonwall.art as api url
 
 ```
-$ curl https://git.pulsar113.org/BooksOnWall/BooksOnWall_cli/raw/master/create_bow.sh | bash -s BooksOnWall https://api.booksonwall.art
+$ curl -s https://git.pulsar113.org/BooksOnWall/BooksOnWall_cli/raw/master/create_bow.sh | bash  BooksOnWall https://api.booksonwall.art
+```
+
+Another method is: 
+
+```
+wget curl https://git.pulsar113.org/BooksOnWall/BooksOnWall_cli/raw/master/create_bow.sh
+sh create_bow.sh BooksOnWall https://api.booksonwall.art
 ```
 
