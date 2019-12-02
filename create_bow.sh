@@ -30,7 +30,7 @@ echo 'installing android arDebug'
 android/gradelew install:arDebug
 
 echo 'Installing packages'
-yarn add prop-types react-dom react-native-app-intro-slider react-navigation react-navigation-stack react-native-reanimated react-native-screens
+yarn add prop-types react-dom react-native-app-intro-slider react-navigation react-navigation-transitions react-navigation-tabs react-navigation-stack react-native-reanimated react-native-screens
 
 echo 'Installing unstable lib'
 yarn add react-native-gesture-handler@~1.4.0 && react-native link react-native-gesture-handler
@@ -47,5 +47,35 @@ echo 'Adding react-native-mapbox-gl'
 yarn add  @react-native-mapbox-gl/maps
 
 echo 'Adding Andoid X compatibility'
+# Adding jetifier
+yarn add @jumpn/react-native-jetifier -D
 echo 'android.useAndroidX=true' >> android/gradle.properties
 echo 'android.enableJetifier=true' >> android/gradle.properties
+SCRIPTS=`jq '.scripts = { postinstall: "yarn react-native-jetifier", prestart: "./node_modules/react-viro/bin/run_ngrok.sh", start: "node node_modules/react-native/local-cli/cli.js start", android: "react-native run-android --variant=arDebug", ios: "react-native run-ios --variant=arDebug" }' package.json`
+touch n.json && echo $SCRIPTS > n.json
+rm package.json && touch package.json
+jq . n.json > package.json && rm n.json
+echo 'Running jetifier'
+yarn react-native-jetifier
+
+# copy files
+echo 'Copy src directory'
+cp -r ../data/src .
+echo 'Copy assets'
+cp -r ../data/assets .
+
+echo 'Switch main app.js page'
+
+mv App.js src/Ar.js
+mv src/App.js App.js
+mv js src/.
+
+# icon & splash
+echo 'Setting icon and splash'
+react-native set-icon --path assets/icon.png
+react-native set-splash --path assets/splash.png
+# ENd of script
+echo 'Your mobile application is ready to build'
+echo 'Connect your phone to the computer'
+echo 'cd ' $1
+echo 'yarn start && yarn android to build'
