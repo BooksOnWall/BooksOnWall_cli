@@ -20,7 +20,9 @@ react-viro init $NAME --verbose
 cd $NAME
 sh setup-ide.sh android
 echo 'CREATING .env'
+# put here your VIRO api key , since version 2.17 outsourced free software not mandatory anymore
 echo 'VIROAPIKEY="8C94EE83-76E2-4683-ADEF-985A1F266665"' >> .env
+# put here your MAPBOX api key https://docs.mapbox.com/help/how-mapbox-works/access-tokens/
 echo 'MAPBOX="pk.eyJ1IjoiY3JvbGwiLCJhIjoiY2p4cWVmZDA2MDA0aTNkcnQxdXhldWxwZCJ9.3pr6-2NQQDd59UBRCEeenA"' >> .env
 echo $UENV >> .env
 
@@ -29,6 +31,7 @@ android/gradelew install:arDebug
 
 echo 'Installing packages'
 yarn add prop-types react-dom react-native-app-intro-slider react-navigation react-navigation-stack react-native-reanimated react-native-screens
+
 echo 'Installing unstable lib'
 yarn add react-native-gesture-handler@~1.4.0 && react-native link react-native-gesture-handler
 yarn add react-native-vector-icons && react-native link
@@ -42,3 +45,7 @@ echo 'Adding things to package.json'
 #jq "./package.json"
 echo 'Adding react-native-mapbox-gl'
 yarn add  @react-native-mapbox-gl/maps
+
+echo 'Adding Andoid X compatibility'
+echo 'android.useAndroidX=true' >> android/gradle.properties
+echo 'android.enableJetifier=true' >> android/gradle.properties
