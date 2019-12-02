@@ -10,22 +10,22 @@
 [react-vivo-cli](https://docs.viromedia.com/docs)
 
 ## Install 
+
+
 This script take 2 parameters :
 
 The first is the name of the mobile application 
 
 The Second the URL of the server side api 
 
-let's say you want to create an app with BooksOnWall as a name and https://api.booksonwall.art as api url
+let's say you want to create an app with BooksOnWall as a name 
+
+and https://api.booksonwall.art as an api url
 
 ```
-$ curl -s https://git.pulsar113.org/BooksOnWall/BooksOnWall_cli/raw/master/create_bow.sh | bash  BooksOnWall https://api.booksonwall.art
-```
+$ git clone git@git.pulsar113.org:BooksOnWall/BooksOnWall_cli.git
+$ cd BooksOnWall_cli
+$ sh create_bow.sh BooksOnWall https://api.booksonwall.art
 
-Another method is: 
-
 ```
-wget curl https://git.pulsar113.org/BooksOnWall/BooksOnWall_cli/raw/master/create_bow.sh
-sh create_bow.sh BooksOnWall https://api.booksonwall.art
-```
-
+This will create a directory and application android and ios named BooksOnWall using the api https://api.booksonwall.art
