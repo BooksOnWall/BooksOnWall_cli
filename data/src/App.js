@@ -13,6 +13,8 @@ import { createBottomTabNavigator } from 'react-navigation-tabs';
 import SplashScreen from 'react-native-splash-screen';
 import FirstRun from './src/api/firstRun/FirstRun';
 import Icon from 'react-native-vector-icons/Ionicons';
+import * as RNLocalize from "react-native-localize";
+
 
 const AppNavigator = createStackNavigator({
     Intro: { screen: Intro},
@@ -52,6 +54,18 @@ export default class App extends Component {
     } catch (e) {
       console.warn(e);
     }
+  }
+  async handleLocales() {
+    this.locales = RNLocalize.getLocales();
+  }
+
+  getLocale() {
+    if (this.locales) {
+      if (Array.isArray(this.locales)) {
+        return this.locales[0];
+      }
+    }
+    return null;
   }
   loadStories = async () => {
     try {
