@@ -1,11 +1,16 @@
 #!/bin/bash
 if [[ $# -eq 0 ]] ; then
-    echo 'Please indicate your project name: ex sh create_bow.sh MyProject'
+    echo 'Please indicate your project name and api url: ex sh create_bow.sh MyProject https://api.booksonwall.art'
     exit 0
 fi
 
 NAME=$1
+URL=$2
+UENV='URL='$URL
 echo 'Creating project:' $NAME
+echo 'Api URL:' $URL
+
+
 echo 'Check dependencies ....# to do add more verification version list '
 #yarn info react-native-cli
 #npm install -g react-native-cli
@@ -17,17 +22,17 @@ sh setup-ide.sh android
 echo 'CREATING .env'
 echo 'VIROAPIKEY="8C94EE83-76E2-4683-ADEF-985A1F266665"' >> .env
 echo 'MAPBOX="pk.eyJ1IjoiY3JvbGwiLCJhIjoiY2p4cWVmZDA2MDA0aTNkcnQxdXhldWxwZCJ9.3pr6-2NQQDd59UBRCEeenA"' >> .env
+echo $UENV >> .env
 
 echo 'installing android arDebug'
-cd android
-./gradelew install:arDebug
+android/gradelew install:arDebug
 
 echo 'Installing packages'
-yarn add prop-types react-dom react-native-app-intro-slider react-navigation react-navigation-stack react-native-reanimated react-native-screens 
+yarn add prop-types react-dom react-native-app-intro-slider react-navigation react-navigation-stack react-native-reanimated react-native-screens
 echo 'Installing unstable lib'
-yarn add react-native-gesture-handler@~1.4.0 && react-native link react-native-gesture-handler 
-yarn add react-native-vector-icons && react-native link react-native-vector-icon
-yarn add react-native-splash-screen && react-native link react-native-splash-screen 
+yarn add react-native-gesture-handler@~1.4.0 && react-native link react-native-gesture-handler
+yarn add react-native-vector-icons && react-native link
+yarn add react-native-splash-screen && react-native link react-native-splash-screen
 
 echo 'Adding react-native-make'
 yarn add -D @bam.tech/react-native-make
@@ -37,5 +42,3 @@ echo 'Adding things to package.json'
 #jq "./package.json"
 echo 'Adding react-native-mapbox-gl'
 yarn add  @react-native-mapbox-gl/maps
-
-
