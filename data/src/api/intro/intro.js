@@ -1,11 +1,12 @@
 import React , { Component } from 'react';
 import { Image, StyleSheet, View, Text, ActivityIndicator, Platform } from 'react-native';
+import I18n from "../../utils/i18n";
 import AppIntroSlider from 'react-native-app-intro-slider';
 const slides = [
   {
     key: 'p1',
-    title: 'Welcome',
-    text: 'We invite you to explore a story.',
+    title: I18n.t("Welcome"),
+    text: I18n.t("We invite you to explore a story."),
     image: require('./img/bow-slider-bg_c01.jpg'),
     backgroundColor: '#59b2ab',
   },

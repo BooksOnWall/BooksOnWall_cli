@@ -94,7 +94,13 @@ export default class Stories extends PureComponent {
         data={this.state.stories}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         renderItem={({ item, index }) => (
-
+          <Swipeable
+            friction={2}
+            leftThreshold={80}
+            rightThreshold={40}
+            renderLeftActions={this.renderLeftActions}
+            renderRightActions={this.renderRightActions}
+            >
             <RectButton key={'s'+index} style={styles.rectButton} onPress={() => this.props.navigation.navigate('Story', {'story': item})}>
               <Text style={styles.fromText}>{item.title}</Text>
               <Text numberOfLines={2} style={styles.messageText}>
@@ -104,7 +110,7 @@ export default class Stories extends PureComponent {
                 {item.updatedAt} {'❭'}
               </Text>
             </RectButton>
-
+          </Swipeable>
         )}
         keyExtractor={(item, index) => `message ${index}`}
       />
