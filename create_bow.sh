@@ -37,6 +37,11 @@ yarn add react-native-gesture-handler@~1.4.0 && react-native link react-native-g
 yarn add react-native-vector-icons && react-native link
 yarn add react-native-splash-screen && react-native link react-native-splash-screen
 
+echo 'Adding internationalization'
+yarn add react-native-localize
+yarn add i18n-js
+react-native link
+
 echo 'Adding react-native-make'
 yarn add -D @bam.tech/react-native-make
 
