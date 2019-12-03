@@ -15,19 +15,18 @@ echo 'Check dependencies ....# to do add more verification version list '
 RN=`npm list -g react-native-cli`
 RNMATCH=react-native-cli@2.0.1
 RN=${RN:19}
-if [ $RN != $RNMATCH ]
+if [[ -z "$RN" || $RN != $RNMATCH ]]
 then
 	sudo npm install -g react-native-cli@2.0.1
 fi
+
 RV=`npm list -g react-viro-cli`
 RV=${RV:19}
 RVMATCH=react-viro-cli@2.17.1
-
-if [ $RV != $RVMATCH]
+if [[ -z "$RV" || $RV != $RVMATCH ]]
 then
 	sudo npm install -g react-viro-cli@2.17.1
 fi
-
 react-viro init $NAME --verbose
 cd $NAME
 sh setup-ide.sh android
