@@ -48,9 +48,10 @@ echo $UENV >> .env
 
 
 echo 'Installing packages'
-yarn add prop-types react-dom react-native-app-intro-slider react-navigation react-navigation-transitions react-navigation-tabs react-navigation-stack react-native-reanimated react-native-screens
+yarn add prop-types react-dom react-native-app-intro-slider react-navigation react-navigation-transitions react-navigation-tabs react-navigation-stack react-native-reanimated
 
 echo 'Installing unstable lib'
+yarn add react-native-screens@~1.0.0-alpha.23 && react-native link react-native-screens
 yarn add react-native-gesture-handler@~1.4.0 && react-native link react-native-gesture-handler
 yarn add react-native-vector-icons && react-native link
 yarn add react-native-splash-screen && react-native link react-native-splash-screen
@@ -67,7 +68,9 @@ yarn add -D @bam.tech/react-native-make
 
 
 echo 'Adding react-native-mapbox-gl'
-yarn add  @react-native-mapbox-gl/maps
+#yarn add  @react-native-mapbox-gl/maps
+yarn add https://github.com/react-native-mapbox-gl/maps#7.0.1
+react-native link @react-native-mapbox-gl/maps
 echo 'Adding netinfo to check connectivity'
 yarn add @react-native-community/netinfo
 react-native link @react-native-community/netinfo
@@ -108,6 +111,7 @@ mv js src/.
 cp ../data/README.md .
 #comment cp .git if you want to commit in another git repository
 cp -r ../data/.git .
+cp -r ../data/.gitgnore .
 
 # icon & splash
 echo 'Setting icon and splash'
