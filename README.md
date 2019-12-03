@@ -34,13 +34,13 @@ Other package managers are available, but the version of Gradle distributed by t
 ```
 Upgrade with the Gradle Wrapper
 If your existing Gradle-based build uses the Gradle Wrapper, you can easily upgrade by running the wrapper task, specifying the desired Gradle version:
-
-$ ./gradlew wrapper --gradle-version=6.0.1 --distribution-type=bin
+cd android
+$ ./gradlew wrapper --gradle-version=5.4.1 --distribution-type=bin
 Note that it is not necessary for Gradle to be installed to use the Gradle wrapper. The next invocation of gradlew or gradlew.bat will download and cache the specified version of Gradle.
 
 $ ./gradlew tasks
-Downloading https://services.gradle.org/distributions/gradle-6.0.1-bin.zip
-...
+Downloading https://services.gradle.org/distributions/gradle-5.4.1-bin.zip
+
 ```
 
 ## Install 
