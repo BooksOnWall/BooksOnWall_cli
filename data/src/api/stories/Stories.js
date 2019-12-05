@@ -1,4 +1,4 @@
-import React, { PureComponent } from 'react';
+import React, { Component } from 'react';
 import {
   Platform,
   Animated,
@@ -12,17 +12,37 @@ import {
 import { FlatList, RectButton } from 'react-native-gesture-handler';
 import Swipeable from "react-native-gesture-handler/Swipeable";
 import Icon from 'react-native-vector-icons/MaterialIcons';
-
-//import RNFetchBlob from 'react-native-fetch-blob';
-// import * as Permissions from 'expo-permissions';
-// import * as FileSystem from 'expo-file-system';
-
-const AnimatedIcon = Animated.createAnimatedComponent(Icon);
-
+import GmailStyleSwipeableRow from './GmailStyleSwipeableRow';
+import AppleStyleSwipeableRow from './AppleStyleSwipeableRow';
 //  To toggle LTR/RTL uncomment the next line
 I18nManager.allowRTL(true);
-
-export default class Stories extends PureComponent {
+const Row = ({ item }) => (
+  <RectButton style={styles.rectButton} onPress={() => alert(item.from)}>
+    <Text style={styles.fromText}>{item.title}}</Text>
+    <Text numberOfLines={1} style={styles.messageText}>
+      {item.aa.name}
+    </Text>
+    <Text style={styles.dateText}>
+      {item.updatedAt} {'❭'}
+    </Text>
+  </RectButton>
+);
+const SwipeableRow = ({ item, index }) => {
+  if (index % 2 === 0) {
+  return (
+    <AppleStyleSwipeableRow>
+      <Row item={item} />
+    </AppleStyleSwipeableRow>
+  );
+} else {
+  return (
+    <GmailStyleSwipeableRow>
+      <Row item={item} />
+    </GmailStyleSwipeableRow>
+  );
+}
+};
+export default class Stories extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -35,38 +55,6 @@ export default class Stories extends PureComponent {
   static navigationOptions = {
     title: 'Stories',
   };
-  renderRightActions = (progress, dragX) => {
-    const scale = dragX.interpolate({
-        inputRange: [-80, 0],
-        outputRange: [1, 0],
-        extrapolate: 'clamp',
-      });
-    return (
-      <RectButton style={styles.rightAction} onPress={this.close}>
-        <AnimatedIcon
-          name="delete-forever"
-          size={30}
-          color="#fff"
-          />
-      </RectButton>
-    );
-  }
-  renderLeftActions = (progress, dragX) => {
-    const scale = dragX.interpolate({
-       inputRange: [0, 80],
-       outputRange: [0, 1],
-       extrapolate: 'clamp',
-     });
-    return (
-      <RectButton style={styles.leftAction} onPress={this.close}>
-        <AnimatedIcon
-          name="archive"
-          size={30}
-          color="#fff"
-        />
-      </RectButton>
-    );
-  }
   componentDidMount = async () => {
     try {
       if(Platform === 'web') {
@@ -76,9 +64,6 @@ export default class Stories extends PureComponent {
     }catch(e) {
       console.log("Error fetching data-----------", e);
     }
-  }
-  close() {
-
   }
   render() {
     if (this.state.isLoading || this.state.Platform === 'web') {
@@ -90,29 +75,14 @@ export default class Stories extends PureComponent {
     }
     return (
       <View style={styles.container}>
+
       <FlatList
         data={this.state.stories}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         renderItem={({ item, index }) => (
-          <Swipeable
-            friction={2}
-            leftThreshold={80}
-            rightThreshold={40}
-            renderLeftActions={this.renderLeftActions}
-            renderRightActions={this.renderRightActions}
-            >
-            <RectButton key={'s'+index} style={styles.rectButton} onPress={() => this.props.navigation.navigate('Story', {'story': item})}>
-              <Text style={styles.fromText}>{item.title}</Text>
-              <Text numberOfLines={2} style={styles.messageText}>
-                {item.aa.name}
-              </Text>
-              <Text style={styles.dateText}>
-                {item.updatedAt} {'❭'}
-              </Text>
-            </RectButton>
-          </Swipeable>
+          <SwipeableRow item={item} index={index} onPress={() => this.props.navigation.navigate('Story', {'story': item})} />
         )}
-        keyExtractor={(item, index) => `message ${index}`}
+        keyExtractor={(item, index) => `id ${index}`}
       />
     </View>
     );
