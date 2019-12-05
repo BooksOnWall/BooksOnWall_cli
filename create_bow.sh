@@ -88,8 +88,10 @@ echo 'Installing packages'
 yarn add prop-types react-dom react-native-app-intro-slider react-navigation react-navigation-transitions react-navigation-tabs react-navigation-stack react-native-reanimated
 
 echo 'Installing unstable lib'
-yarn add react-native-screens@~1.0.0-alpha.23 && react-native link react-native-screens
-yarn add react-native-gesture-handler@^1.4.0 && react-native link react-native-gesture-handler
+# yarn add react-native-screens@~1.0.0-alpha.23 && react-native link react-native-screens
+# yarn add react-native-gesture-handler@^1.4.0 && react-native link react-native-gesture-handler
+yarn add react-native-screens && react-native link react-native-screens
+yarn add react-native-gesture-handler && react-native link react-native-gesture-handler
 yarn add react-native-vector-icons && react-native link
 yarn add react-native-splash-screen && react-native link react-native-splash-screen
 
@@ -161,7 +163,7 @@ cp -r ../data/.gitignore .
 # icon & splash
 echo 'Setting icon and splash'
 react-native set-icon --path assets/icon/bow_adaptive-icon_1024x1024.png
-react-native set-splash --path assets/splash/bow_splash-3000x2171-transparent.png --resize center 
+react-native set-splash --path assets/splash/bow_splash-3000x2171-transparent.png --resize contain --background="#1A1B1C"
 
 # echo 'git add && git commit && git push'
 # git add .buckconfig .flowconfig .gitattributes .gitignore .watchmanconfig App.js README.md __tests__/ android/ app.json assets/ babel.config.js bin/ index.android.js index.ios.js index.js ios/ jetificableGroups.json metro.config.js package.json rn-cli.config.js setup-ide.sh src/
