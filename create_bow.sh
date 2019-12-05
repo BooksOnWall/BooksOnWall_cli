@@ -162,8 +162,8 @@ cp -r ../data/.gitignore .
 
 # icon & splash
 echo 'Setting icon and splash'
-react-native set-icon --path assets/icon/bow_adaptive-icon_1024x1024.png
-react-native set-splash --path assets/splash/bow_splash-3000x2171-transparent.png --resize contain --background="#1A1B1C"
+react-native set-icon --path assets/icon/bow_adaptive-icon_1024.png
+react-native set-splash --path assets/splash/bow_splash_3000.png --resize contain --background="#1A1B1C"
 
 # echo 'git add && git commit && git push'
 # git add .buckconfig .flowconfig .gitattributes .gitignore .watchmanconfig App.js README.md __tests__/ android/ app.json assets/ babel.config.js bin/ index.android.js index.ios.js index.js ios/ jetificableGroups.json metro.config.js package.json rn-cli.config.js setup-ide.sh src/
