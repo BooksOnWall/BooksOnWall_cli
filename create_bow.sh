@@ -17,17 +17,25 @@ RNMATCH=react-native-cli@2.0.1
 RN=${RN:19}
 if [[ -z "$RN" || $RN != $RNMATCH ]]
 then
-	sudo npm install -g react-native-cli@2.0.1
+	sudo npx install -g react-native-cli@2.0.1
+else
+	echo $RN
 fi
 
 RV=`npm list -g react-viro-cli`
 RV=${RV:19}
 RVMATCH=react-viro-cli@2.17.1
+
 if [[ -z "$RV" || $RV != $RVMATCH ]]
+
 then
-	sudo npm install -g react-viro-cli@2.17.1
+	sudo npx install -g react-viro-cli@2.17.1
+else
+	echo $RV
 fi
-react-viro init $NAME --verbose
+
+react-viro init $NAME
+
 cd $NAME
 sh setup-ide.sh android
 echo 'CREATING .env'
@@ -40,9 +48,10 @@ echo $UENV >> .env
 
 
 echo 'Installing packages'
-yarn add prop-types react-dom react-native-app-intro-slider react-navigation react-navigation-transitions react-navigation-tabs react-navigation-stack react-native-reanimated react-native-screens
+yarn add prop-types react-dom react-native-app-intro-slider react-navigation react-navigation-transitions react-navigation-tabs react-navigation-stack react-native-reanimated
 
 echo 'Installing unstable lib'
+yarn add react-native-screens@~1.0.0-alpha.23 && react-native link react-native-screens
 yarn add react-native-gesture-handler@~1.4.0 && react-native link react-native-gesture-handler
 yarn add react-native-vector-icons && react-native link
 yarn add react-native-splash-screen && react-native link react-native-splash-screen
@@ -50,6 +59,8 @@ yarn add react-native-splash-screen && react-native link react-native-splash-scr
 echo 'Adding internationalization'
 yarn add react-native-localize
 react-native link react-native-localize
+# yarn add react-native-intl react-int intl
+# react-native link react-native-intl
 yarn add i18n-js
 
 echo 'Adding react-native-make used by setIcon and setSplash'
@@ -57,7 +68,12 @@ yarn add -D @bam.tech/react-native-make
 
 
 echo 'Adding react-native-mapbox-gl'
-yarn add  @react-native-mapbox-gl/maps
+#yarn add  @react-native-mapbox-gl/maps
+yarn add https://github.com/react-native-mapbox-gl/maps#7.0.1
+react-native link @react-native-mapbox-gl/maps
+echo 'Adding netinfo to check connectivity'
+yarn add @react-native-community/netinfo
+react-native link @react-native-community/netinfo
 
 echo 'Adding Andoid X compatibility'
 # Adding jetifier
@@ -92,13 +108,21 @@ echo 'Switch main app.js page'
 mv App.js src/Ar.js
 mv src/App.js App.js
 mv js src/.
+cp ../data/README.md .
+#comment cp .git if you want to commit in another git repository
+cp -r ../data/.git .
+cp -r ../data/.gitgnore .
 
 # icon & splash
 echo 'Setting icon and splash'
 react-native set-icon --path assets/icon.png
 react-native set-splash --path assets/splash.png
-echo 'Running react-native link in case of malfunction'
-react-native link
+
+echo 'git add && git commit && git push'
+git add .buckconfig .flowconfig .gitattributes .gitignore .watchmanconfig App.js README.md __tests__/ android/ app.json assets/ babel.config.js bin/ index.android.js index.ios.js index.js ios/ jetificableGroups.json metro.config.js package.json rn-cli.config.js setup-ide.sh src/
+git commit -m "new BooksOnWall_cli build"
+git push
+
 # End of script
 echo 'Your mobile application is ready to build'
 echo 'Connect your phone to the computer'
