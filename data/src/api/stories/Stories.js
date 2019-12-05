@@ -17,7 +17,7 @@ import AppleStyleSwipeableRow from './AppleStyleSwipeableRow';
 //  To toggle LTR/RTL uncomment the next line
 I18nManager.allowRTL(true);
 const Row = ({ item }) => (
-  <RectButton style={styles.rectButton} onPress={() => alert(item.from)}>
+  <RectButton style={styles.rectButton} onPress={() => this.props.navigation.navigate('Story', {'story': item})} >
     <Text style={styles.fromText}>{item.title}}</Text>
     <Text numberOfLines={1} style={styles.messageText}>
       {item.aa.name}
@@ -80,7 +80,7 @@ export default class Stories extends Component {
         data={this.state.stories}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         renderItem={({ item, index }) => (
-          <SwipeableRow item={item} index={index} onPress={() => this.props.navigation.navigate('Story', {'story': item})} />
+          <SwipeableRow item={item} index={index}  />
         )}
         keyExtractor={(item, index) => `id ${index}`}
       />
