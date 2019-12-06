@@ -46,11 +46,13 @@ Downloading https://services.gradle.org/distributions/gradle-5.4.1-bin.zip
 ## Install 
 
 
-This script take 2 parameters :
+This script take 3 parameters :
 
-The first is the name of the mobile application 
+The first is init 
 
-The Second the URL of the server side api 
+The second is the name of the mobile application 
+
+The third the URL of the server side api 
 
 let's say you want to create an app with BooksOnWall as a name 
 
@@ -59,7 +61,8 @@ and https://api.booksonwall.art as an api url
 ```
 $ git clone git@git.pulsar113.org:BooksOnWall/BooksOnWall_cli.git
 $ cd BooksOnWall_cli
-$ sh create_bow.sh BooksOnWall https://api.booksonwall.art
+$ chmod +x react-bow
+$ ./react-bow init  BooksOnWall https://api.booksonwall.art
 
 ```
 This will create a directory and application android and ios named BooksOnWall using the api https://api.booksonwall.art
