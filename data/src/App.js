@@ -16,25 +16,36 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import * as RNLocalize from "react-native-localize";
 
 
-const AppNavigator = createStackNavigator({
-    Intro: { screen: Intro},
-    AR: { screen: AR},
-    Stories: { screen: Stories},
-    Stages: { screen: Stages},
-  },
-  {
+const MainNavigator = createStackNavigator({
+  Intro: { screen: Intro},
+  Stories: {screen: Stories},
+  Story: {screen: Story},
+},
+{
     initialRouteName: 'Intro',
-    transitionConfig: () => fromRight(),
-    swipeEnabled: true,
-    animationEnabled: true,
-    headerMode: 'none',
-    lazy: true,
-    navigationOptions: {
-      header: null,
-    },
-  });
+});
 
-const AppContainer = createAppContainer(AppNavigator);
+// const App = createAppContainer(MainNavigator);
+//
+// const AppNavigator = createStackNavigator({
+//     Intro: { screen: Intro},
+//     AR: { screen: AR},
+//     Stories: { screen: Stories},
+//     Stages: { screen: Stages},
+//   },
+//   {
+//     initialRouteName: 'Intro',
+//     transitionConfig: () => fromRight(),
+//     swipeEnabled: true,
+//     animationEnabled: true,
+//     headerMode: 'none',
+//     lazy: true,
+//     navigationOptions: {
+//       header: null,
+//     },
+//   });
+
+const AppContainer = createAppContainer(MainNavigator);
 
 export default class App extends Component {
   constructor(props) {
@@ -48,6 +59,7 @@ export default class App extends Component {
   componentDidMount = async () => {
     try {
       if(Platform.OS !== 'web') {
+        await this.handleLocales();
         await this.loadStories();
         SplashScreen.hide();
       }

@@ -70,7 +70,7 @@ then
 else
 	echo 'React-viro installed version:' $RV
 fi
-echo "Let's Build ....... \n Assembling the Framework ..... \n To make a new mobile application \n For ios and Android"
+
 react-viro init $NAME
 
 cd $NAME
@@ -85,14 +85,16 @@ echo $UENV >> .env
 
 
 echo 'Installing packages'
-yarn add prop-types react-dom react-native-app-intro-slider react-navigation react-navigation-transitions react-navigation-stack react-native-reanimated yarn add react-navigation-tabs
-
-yarn add react-native-elements 
+yarn add prop-types react-dom react-native-app-intro-slider
 
 echo 'Installing unstable lib'
-
-yarn add react-native-screens@~1.0.0-alpha.23 && react-native link react-native-screens
-yarn add react-native-gesture-handler@^1.0.0 && react-native link react-native-gesture-handler
+yarn add react-native-navigation && react-native link react-native-navigation
+while read line
+do
+        echo $line | grep -q "rootProject.name = 'BooksOnWall'"
+        [ $? -eq 0 ] && echo "include ':react-native-navigation' \n
+        project(':react-native-navigation').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-navigation/lib/android/app/')"
+done <  android/settings.gradle
 
 yarn add react-native-vector-icons && react-native link
 yarn add react-native-splash-screen && react-native link react-native-splash-screen
@@ -116,7 +118,7 @@ yarn add @react-native-community/geolocation
 react-native link @react-native-community/geolocation
 yarn add react-native-easy-downloader
 react-native link react-native-easy-downloader
-
+#RNFB_ANDROID_PERMISSION=true react-native link
 echo 'Adding netinfo to check connectivity'
 yarn add @react-native-community/netinfo
 react-native link @react-native-community/netinfo

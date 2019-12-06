@@ -1,47 +1,47 @@
 import React, { Component } from 'react';
 import {
-  Platform,
-  Animated,
-  Linking,
-  StyleSheet,
-  Text,
+  SafeAreaView,
+  TouchableOpacity,
+  TouchableHighlight,
+  FlatList,
   View,
+  Platform,
   I18nManager,
   ActivityIndicator,
-  TouchableOpacity } from 'react-native';
-import { FlatList, RectButton } from 'react-native-gesture-handler';
-import Swipeable from "react-native-gesture-handler/Swipeable";
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import GmailStyleSwipeableRow from './GmailStyleSwipeableRow';
-import AppleStyleSwipeableRow from './AppleStyleSwipeableRow';
-//  To toggle LTR/RTL uncomment the next line
-I18nManager.allowRTL(true);
-const Row = ({ item }) => (
-  <RectButton style={styles.rectButton} onPress={() => this.props.navigation.navigate('Story', {'story': item})} >
-    <Text style={styles.fromText}>{item.title}}</Text>
-    <Text numberOfLines={1} style={styles.messageText}>
-      {item.aa.name}
-    </Text>
-    <Text style={styles.dateText}>
-      {item.updatedAt} {'❭'}
-    </Text>
-  </RectButton>
-);
-const SwipeableRow = ({ item, index }) => {
-  if (index % 2 === 0) {
+  StyleSheet,
+  Text,
+} from 'react-native';
+
+
+const DATA = [
+  {
+    id: 'bd7acbea-c1b1-46c2-aed5-3ad53abb28ba',
+    title: 'First Item',
+  },
+  {
+    id: '3ac68afc-c605-48d3-a4f8-fbd91aa97f63',
+    title: 'Second Item',
+  },
+  {
+    id: '58694a0f-3da1-471f-bd96-145571e29d72',
+    title: 'Third Item',
+  },
+];
+
+function Item({ id, title, selected, onSelect }) {
   return (
-    <AppleStyleSwipeableRow>
-      <Row item={item} />
-    </AppleStyleSwipeableRow>
-  );
-} else {
-  return (
-    <GmailStyleSwipeableRow>
-      <Row item={item} />
-    </GmailStyleSwipeableRow>
+    <TouchableOpacity
+      onPress={() => onSelect(id)}
+      style={[
+        styles.item,
+        { backgroundColor: selected ? '#6e3b6e' : '#f9c2ff' },
+      ]}
+    >
+      <Text style={styles.title}>{title}</Text>
+    </TouchableOpacity>
   );
 }
-};
+
 export default class Stories extends Component {
   constructor(props) {
     super(props);
@@ -74,75 +74,38 @@ export default class Stories extends Component {
       );
     }
     return (
-      <View style={styles.container}>
-
-      <FlatList
-        data={this.state.stories}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-        renderItem={({ item, index }) => (
-          <SwipeableRow item={item} index={index}  />
-        )}
-        keyExtractor={(item, index) => `id ${index}`}
-      />
-    </View>
+      <SafeAreaView style={styles.container}>
+        <FlatList
+          ItemSeparatorComponent={
+            <View style={[styles.separator, highlighted && {marginLeft: 0}]} />
+          }
+          data={[{title: 'Title Text', key: 'item1'}]}
+          renderItem={({item, index, separators}) => (
+            <TouchableHighlight
+              onPress={() => this.props.navigation.navigate('Story', {'story': item})}
+              onShowUnderlay={separators.highlight}
+              onHideUnderlay={separators.unhighlight}>
+              <View style={{backgroundColor: 'white'}}>
+                <Text>{item.title}</Text>
+              </View>
+            </TouchableHighlight>
+          )}
+          />
+      </SafeAreaView>
     );
   }
 }
-
 const styles = StyleSheet.create({
-  leftAction: {
-    flex: 1,
-    backgroundColor: '#388e3c',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    flexDirection: I18nManager.isRTL ? 'row' : 'row-reverse'
-  },
-  actionIcon: {
-    width: 30,
-    marginHorizontal: 10
-  },
-  rightAction: {
-    alignItems: 'center',
-    flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
-    backgroundColor: '#dd2c00',
-    flex: 1,
-    justifyContent: 'flex-end'
-  },
   container: {
-    flex:1,
-    alignItems: 'flex-start',
-    alignContent: 'flex-start',
-    flexDirection: 'row',
-    flexWrap:'wrap',
-    justifyContent:'center',
-  },
-  rectButton: {
     flex: 1,
-    height: 80,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    justifyContent: 'space-between',
-    flexDirection: 'column',
-    backgroundColor: 'white',
   },
-  separator: {
-    backgroundColor: 'rgb(200, 199, 204)',
-    height: StyleSheet.hairlineWidth,
+  item: {
+    backgroundColor: '#f9c2ff',
+    padding: 20,
+    marginVertical: 8,
+    marginHorizontal: 16,
   },
-  fromText: {
-    fontWeight: 'bold',
-    backgroundColor: 'transparent',
-  },
-  messageText: {
-    color: '#999',
-    backgroundColor: 'transparent',
-  },
-  dateText: {
-    backgroundColor: 'transparent',
-    position: 'absolute',
-    right: 20,
-    top: 10,
-    color: '#999',
-    fontWeight: 'bold',
+  title: {
+    fontSize: 32,
   },
 });
