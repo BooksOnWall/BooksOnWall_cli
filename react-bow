@@ -260,7 +260,9 @@ else
   mkdir bin
   cp ./node_modules/react-viro/bin/ViroFBX bin
 fi
-pwd
+echo "remove package-lock.json as we use yarn instead of npm"
+rm -f package-lock.json
+
 echo 'react-viro init script complete! To setup for use with Android Studio/Xcode, please run setup-ide.sh script.'
 
 sh setup-ide.sh android
@@ -326,11 +328,11 @@ yarn react-native-jetifier
 
 echo "Adding things to package.json"
 pwd
-SCRIPTS=`jq ".scripts = { link: "react-native link", setIcon: "react-native set-icon --path", setSplash: "react-native set-splash --path", postinstall: "yarn react-native-jetifier", prestart: "./node_modules/react-viro/bin/run_ngrok.sh", start: "node node_modules/react-native/local-cli/cli.js start", android: "react-native run-android --variant=arDebug", ios: "react-native run-ios --variant=arDebug" }" package.json`
+SCRIPTS=`jq '.scripts = { link: "react-native link", setIcon: "react-native set-icon --path", setSplash: "react-native set-splash --path", postinstall: "yarn react-native-jetifier", prestart: "./node_modules/react-viro/bin/run_ngrok.sh", start: "node node_modules/react-native/local-cli/cli.js start", android: "react-native run-android --variant=arDebug", ios: "react-native run-ios --variant=arDebug" }' package.json`
 touch n.json && echo $SCRIPTS >> n.json
 rm package.json && touch package.json
 jq . n.json > package.json && rm n.json
-SCRIPTS=`jq ".jest = {preset: "react-native", setupFiles: [ "./node_modules/react-native-gesture-handler/jestSetup.js" ] }" package.json `
+SCRIPTS=`jq '.jest = {preset: "react-native", setupFiles: [ "./node_modules/react-native-gesture-handler/jestSetup.js" ] }' package.json `
 touch n.json && echo $SCRIPTS >> n.json
 rm package.json && touch package.json
 jq . n.json > package.json && rm n.json
