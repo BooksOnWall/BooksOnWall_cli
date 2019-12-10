@@ -1,36 +1,15 @@
 import React, {Component} from 'react';
-import { Card, Animated, StyleSheet, View, Text, I18nManager } from 'react-native';
-
-
-const styles = StyleSheet.create({
-  list: {
-    backgroundColor: '#EFEFF4',
-  },
-  separator: {
-    height: 1,
-    backgroundColor: '#DBDBE0',
-  },
-  buttonText: {
-    backgroundColor: 'transparent',
-  },
-  button: {
-    flex: 1,
-    height: 60,
-    padding: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-  },
-});
+import { TouchableOpacity, ScrollView, SafeAreaView, Animated, Image, StyleSheet, View, Text, I18nManager } from 'react-native';
+import { Card, ListItem, Button, Icon } from 'react-native-elements';
+import HTMLView from 'react-native-htmlview';
 
 export default class Story extends Component {
   static navigationOptions = {
-    title: 'Story',
-    tabBarVisible: true,
+    title: 'Story'
   };
   constructor(props) {
     super(props);
-    this.state= {
+    this.state = {
       story: this.props.navigation.getParam('story'),
     };
   }
@@ -38,24 +17,56 @@ export default class Story extends Component {
     if (!this.props.navigation.getParam('story') ) this.props.navigation.navigate('Stories');
   }
   render() {
-    let story = this.state.story;
-
+    const story = this.props.navigation.getParam('story');
     return (
-      <View style={styles.container}>
-        <Text>Story</Text>
-        // <Card>
-        //   <Card.Title title={story.title} subtitle={story.aa.name} left={(props) => <Avatar.Icon {...props} icon="folder" />} />
-        //   <Card.Content>
-        //     <Title>Sinopsys</Title>
-        //     <Paragraph>{story.sinopsys}</Paragraph>
-        //   </Card.Content>
-        //   <Card.Cover source={{ uri: 'https://picsum.photos/700' }} />
-        //   <Card.Actions>
-        //     <Button onPress={() => this.props.navigation.navigate('Download', {'story': story})} icon="cloud-download" mode="contained"  >Download</Button>
-        //     <Button onPress={() => this.props.navigation.navigate('Stages', {'stages': story.stages})} icon="camera" mode="contained">Start</Button>
-        //   </Card.Actions>
-        // </Card>
-      </View>
+      <SafeAreaView style={styles.container}>
+        <ScrollView style={styles.scrollView}>
+          <Card title={story.title}>
+            <HTMLView
+              value={story.sinopsys}
+              stylesheet={styles}
+              />
+            <TouchableOpacity style={styles.bottomButtons}>
+              <Icon
+                raised
+                name='download'
+                type='font-awesome'
+                color='#f50'
+                onPress={() => console.warn('download')} />
+              <Icon
+                raised
+                name='trash'
+                type='font-awesome'
+                color='#f50'
+                onPress={() => console.warn('trash')} />
+              <Icon
+                raised
+                name='play-circle'
+                type='font-awesome'
+                color='#f50'
+                onPress={() => console.warn('play')} />
+          </TouchableOpacity>
+          </Card>
+        </ScrollView>
+      </SafeAreaView>
     );
   }
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollView: {
+    backgroundColor: 'yellow',
+    marginHorizontal: 0,
+  },
+  bottomButtons: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    width: 100,
+    paddingLeft: 8
+  }
+});

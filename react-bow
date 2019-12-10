@@ -276,7 +276,7 @@ echo $UENV >> .env
 
 
 echo "Installing packages"
-yarn add prop-types react-dom react-native-app-intro-slider react-navigation react-navigation-transitions react-navigation-stack react-native-reanimated yarn add react-navigation-tabs
+yarn add prop-types react-dom react-native-app-intro-slider react-navigation react-navigation-transitions react-navigation-stack react-native-reanimated yarn add react-navigation-tabs react-native-htmlview
 
 yarn add react-native-elements
 
@@ -366,6 +366,6 @@ react-native set-splash --path assets/splash/bow_splash_3000.png --resize contai
 # End of script
 echo "Your mobile application is ready to build"
 echo "Connect your phone to the computer"
-echo "cd" $1
+echo "cd" $2
 echo "yarn start && yarn android to build"
 exit 0
