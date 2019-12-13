@@ -269,9 +269,10 @@ yarn add react-native-splash-screen && react-native link react-native-splash-scr
 ## to make connection with the backoffice server and download new stories
 yarn add rn-fetch-blob@0.10.15 && react-native link rn-fetch-blob
 ## to manipulate downloaded story and store it in BooksOnWall storage directory
-yarn add react-native-fs@>= @2.13.2 && react-native link react-native-fs
+yarn add react-native-fs@2.12 && react-native link react-native-fs
 ## to unzip the story.zip
-yarn add react-native-zip-archive@^4.0.0 && react-native link react-native-zip-archive
+#yarn add react-native-zip-archive@4.0.0 && react-native link react-native-zip-archive
+yarn add extract-zip
 
 echo "Adding internationalization"
 yarn add react-native-localize
@@ -309,7 +310,7 @@ yarn react-native-jetifier
 
 echo "Adding commands to package.json"
 pwd
-SCRIPTS=`jq '.scripts = { link: "react-native link", setIcon: "react-native set-icon --path", setSplash: "react-native set-splash --path", postinstall: "yarn react-native-jetifier", prestart: "./node_modules/react-viro/bin/run_ngrok.sh", start: "node node_modules/react-native/local-cli/cli.js start", android: "react-native run-android --variant=arDebug", ios: "react-native run-ios --variant=arDebug" }' package.json`
+SCRIPTS=`jq '.scripts = { doctor: "npx @react-native-community/cli doctor", link: "react-native link", setIcon: "react-native set-icon --path", setSplash: "react-native set-splash --path", postinstall: "yarn react-native-jetifier", prestart: "./node_modules/react-viro/bin/run_ngrok.sh", start: "node node_modules/react-native/local-cli/cli.js start", android: "react-native run-android --variant=arDebug", ios: "react-native run-ios --variant=arDebug" }' package.json`
 touch n.json && echo $SCRIPTS >> n.json
 rm package.json && touch package.json
 jq . n.json > package.json && rm n.json

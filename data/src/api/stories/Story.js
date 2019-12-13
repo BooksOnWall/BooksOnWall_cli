@@ -3,7 +3,8 @@ import { TouchableOpacity, ScrollView, SafeAreaView, Animated, Image, StyleSheet
 import { Card, ListItem, Button, Icon } from 'react-native-elements';
 import HTMLView from 'react-native-htmlview';
 import RNFetchBlob from 'rn-fetch-blob';
-
+import RNFS from react-native-fs;
+import extract from 'extract-zip';
 export default class Story extends Component {
   static navigationOptions = {
     title: 'Story'
@@ -15,6 +16,7 @@ export default class Story extends Component {
     };
   }
   downloadStory = (sid) => {
+    let dirs = RNFetchBlob.fs.dirs;
     RNFetchBlob
     .config({
         addAndroidDownloads : {
@@ -24,7 +26,8 @@ export default class Story extends Component {
             // Optional, but recommended since android DownloadManager will fail when
             // the url does not contains a file extension, by default the mime type will be text/plain
             mime : 'application/tar',
-            description : 'Story downloaded by download manager.'
+            description : 'Story downloaded by download manager.',
+            path : dirs + '/BooksOnWall/'
         }
     })
     .fetch('POST', 'https://api.booksonwall.art/assets/export/stories/'+sid+'/story_'+sid+'.tar')
@@ -32,8 +35,17 @@ export default class Story extends Component {
       // the path of downloaded file
       resp.path();
       console.warn(resp.path);
-    })
+      return this.installStory(sid, res.path);
+    });
+  }
+  installStory = (sid, path) => {
 
+    const dir = "Download";
+    const target = "BooksOnWall";
+    //extract(source, {dir: target}, function (err) {
+        //console.warn(err);
+       // extraction is complete. make sure to handle the err
+    //})
   }
   componentDidMount() {
     if (!this.props.navigation.getParam('story') ) this.props.navigation.navigate('Stories');
