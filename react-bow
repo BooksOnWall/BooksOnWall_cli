@@ -347,7 +347,8 @@ react-native set-splash --path assets/splash/bow_splash_3000.png --resize contai
 # git add .buckconfig .flowconfig .gitattributes .gitignore .watchmanconfig App.js README.md __tests__/ android/ app.json assets/ babel.config.js bin/ index.android.js index.ios.js index.js ios/ jetificableGroups.json metro.config.js package.json rn-cli.config.js setup-ide.sh src/
 # git commit -m "new BooksOnWall_cli build"
 # git push
-
+echo -e "Checking that the Developement Environement Variables are well set"
+npx @react-native-community/cli doctor
 # End of script
 echo "Your mobile application is ready to build"
 echo "Connect your phone to the computer"
