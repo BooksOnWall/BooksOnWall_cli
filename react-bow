@@ -116,34 +116,8 @@ fi
 
 echo "Check dependencies ...."
 # to do add more verification version list "
-# RN=`npm list -g react-native-cli`
-# RNMATCH="react-native-cli@2.0.1"
-# RN=${RN:19}
-# #if [[ -z "$RN" || $RN != $RNMATCH ]]
-# #if [[ $RN != $RNMATCH ]]
-# if [[ -z "$RN" ]]
-# then
-#   echo $RN
-#   echo $RNMATCH
-# 	sudo npm install -g react-native-cli@2.0.1
-# else
-# 	echo "React-native installed version:" $RN
-# fi
 #
-# RV=`npm list -g react-viro-cli`
-# RV=${RV:19}
-# RVMATCH="react-viro-cli@2.17.1"
-
-#if [[ -z "$RV" || $RV != $RVMATCH ]]
-# if [[ -z "$RV" ]]
-# then
-#     echo $RV
-#     echo $RVMATCH
-# 	  sudo npm install -g react-viro-cli@2.17.1
-# else
-# 	echo "React-viro installed version:" $RV
-# fi
-echo -e "Let's Build ....... \n Assembling the Framework ..... \n To make a new mobile application \n For ios and Android"
+echo -e "Let's Build BooksOnWall Mobile ....... \n Assembling the Framework ..... \n To make a new mobile application \n For ios and Android"
 
 ## react-viro init
 ##
@@ -281,12 +255,15 @@ yarn add prop-types react-dom react-native-app-intro-slider react-navigation rea
 yarn add react-native-elements
 
 echo "Installing unstable lib"
-
+yarn add react-native-android-location-enabler && react-native link react-native-android-location-enabler
+yarn add react-native-permissions && react-native link react-native-permissions
 yarn add react-native-screens@~1.0.0-alpha.23 && react-native link react-native-screens
 yarn add react-native-gesture-handler@^1.0.0 && react-native link react-native-gesture-handler
 
 yarn add react-native-vector-icons && react-native link
 yarn add react-native-splash-screen && react-native link react-native-splash-screen
+
+yarn add rn-fetch-blob@0.10.15 && react-native link rn-fetch-blob
 
 echo "Adding internationalization"
 yarn add react-native-localize
@@ -295,8 +272,7 @@ react-native link react-native-localize
 # react-native link react-native-intl
 yarn add i18n-js
 
-echo "Adding react-native-make used by setIcon and setSplash"
-yarn add -D @bam.tech/react-native-make
+
 
 
 echo "Adding react-native-mapbox-gl"
@@ -305,11 +281,10 @@ yarn add https://github.com/react-native-mapbox-gl/maps#7.0.1
 react-native link @react-native-mapbox-gl/maps
 yarn add @react-native-community/geolocation
 react-native link @react-native-community/geolocation
-yarn add react-native-easy-downloader
-react-native link react-native-easy-downloader
+
 
 echo "Adding netinfo to check connectivity"
-yarn add @react-native-community/netinfo
+yarn add @react-native-community/netinfo@^3.0.0
 react-native link @react-native-community/netinfo
 
 echo "Adding Andoid X compatibility"
@@ -354,7 +329,10 @@ cp -r ../data/.git .
 cp -r ../data/.gitignore .
 
 # icon & splash
+
 echo "Setting icon and splash"
+echo "Adding react-native-make used by setIcon and setSplash"
+yarn add -D @bam.tech/react-native-make
 react-native set-icon --path assets/icon/bow_adaptive-icon_1024.png
 react-native set-splash --path assets/splash/bow_splash_3000.png --resize contain --background="#1A1B1C"
 
