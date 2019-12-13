@@ -12,3 +12,12 @@ Run instructions for iOS:
     • cd /home/tom/build/BooksOnWall_cli/BooksOnWall && react-native run-android
 
 ```
+### Check Developer Variables Envirement with react-native-doctor
+
+Documentation: https://facebook.github.io/react-native/blog/2019/11/18/react-native-doctor
+
+```
+$ npx @react-native-community/cli doctor
+
+```
+
