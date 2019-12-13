@@ -2,6 +2,7 @@ import React, {Component} from 'react';
 import { TouchableOpacity, ScrollView, SafeAreaView, Animated, Image, StyleSheet, View, Text, I18nManager } from 'react-native';
 import { Card, ListItem, Button, Icon } from 'react-native-elements';
 import HTMLView from 'react-native-htmlview';
+import RNFetchBlob from 'rn-fetch-blob';
 
 export default class Story extends Component {
   static navigationOptions = {
@@ -12,6 +13,27 @@ export default class Story extends Component {
     this.state = {
       story: this.props.navigation.getParam('story'),
     };
+  }
+  downloadStory = (sid) => {
+    RNFetchBlob
+    .config({
+        addAndroidDownloads : {
+            useDownloadManager : true, // <-- this is the only thing required
+            // Optional, override notification setting (default to true)
+            notification : true,
+            // Optional, but recommended since android DownloadManager will fail when
+            // the url does not contains a file extension, by default the mime type will be text/plain
+            mime : 'application/tar',
+            description : 'Story downloaded by download manager.'
+        }
+    })
+    .fetch('POST', 'https://api.booksonwall.art/assets/export/stories/'+sid+'/story_'+sid+'.tar')
+    .then((resp) => {
+      // the path of downloaded file
+      resp.path();
+      console.warn(resp.path);
+    })
+
   }
   componentDidMount() {
     if (!this.props.navigation.getParam('story') ) this.props.navigation.navigate('Stories');
@@ -32,7 +54,7 @@ export default class Story extends Component {
                 name='download'
                 type='font-awesome'
                 color='#f50'
-                onPress={() => console.warn('download')} />
+                onPress={() => this.downloadStory(story.id)} />
               <Icon
                 raised
                 name='trash'
