@@ -255,15 +255,23 @@ yarn add prop-types react-dom react-native-app-intro-slider react-navigation rea
 yarn add react-native-elements
 
 echo "Installing unstable lib"
-yarn add react-native-android-location-enabler && react-native link react-native-android-location-enabler
-yarn add react-native-permissions && react-native link react-native-permissions
+## to enable GPS automaticly android only
+yarn add react-native-android-location-enabler@1.1.0 && react-native link react-native-android-location-enabler
+## to request permissions from the user
+yarn add react-native-permissions@2.0.0 && react-native link react-native-permissions
+
 yarn add react-native-screens@~1.0.0-alpha.23 && react-native link react-native-screens
+## to manage pinch, touch , slide etc ...
 yarn add react-native-gesture-handler@^1.0.0 && react-native link react-native-gesture-handler
 
 yarn add react-native-vector-icons && react-native link
 yarn add react-native-splash-screen && react-native link react-native-splash-screen
-
+## to make connection with the backoffice server and download new stories
 yarn add rn-fetch-blob@0.10.15 && react-native link rn-fetch-blob
+## to manipulate downloaded story and store it in BooksOnWall storage directory
+yarn add react-native-fs@>= @2.13.2 && react-native link react-native-fs
+## to unzip the story.zip
+yarn add react-native-zip-archive@^4.0.0 && react-native link react-native-zip-archive
 
 echo "Adding internationalization"
 yarn add react-native-localize
@@ -271,9 +279,6 @@ react-native link react-native-localize
 # yarn add react-native-intl react-int intl
 # react-native link react-native-intl
 yarn add i18n-js
-
-
-
 
 echo "Adding react-native-mapbox-gl"
 #yarn add  @react-native-mapbox-gl/maps
@@ -284,11 +289,12 @@ react-native link @react-native-community/geolocation
 
 
 echo "Adding netinfo to check connectivity"
+# to check if network is open and witch type of connection the mobile has
 yarn add @react-native-community/netinfo@^3.0.0
 react-native link @react-native-community/netinfo
 
 echo "Adding Andoid X compatibility"
-# Adding jetifier
+# Adding jetifier to rewrite package to facilitate migration to AndroidX
 yarn add @jumpn/react-native-jetifier -D
 echo "installing android arDebug"
 cd android
@@ -301,7 +307,7 @@ pwd
 echo "Running jetifier"
 yarn react-native-jetifier
 
-echo "Adding things to package.json"
+echo "Adding commands to package.json"
 pwd
 SCRIPTS=`jq '.scripts = { link: "react-native link", setIcon: "react-native set-icon --path", setSplash: "react-native set-splash --path", postinstall: "yarn react-native-jetifier", prestart: "./node_modules/react-viro/bin/run_ngrok.sh", start: "node node_modules/react-native/local-cli/cli.js start", android: "react-native run-android --variant=arDebug", ios: "react-native run-ios --variant=arDebug" }' package.json`
 touch n.json && echo $SCRIPTS >> n.json
@@ -332,6 +338,7 @@ cp -r ../data/.gitignore .
 
 echo "Setting icon and splash"
 echo "Adding react-native-make used by setIcon and setSplash"
+# to be able to set Icon and Splash for android and ios Warning this package is unnecessary for react-navive@>=60
 yarn add -D @bam.tech/react-native-make
 react-native set-icon --path assets/icon/bow_adaptive-icon_1024.png
 react-native set-splash --path assets/splash/bow_splash_3000.png --resize contain --background="#1A1B1C"
