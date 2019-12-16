@@ -3,8 +3,8 @@ import { TouchableOpacity, ScrollView, SafeAreaView, Animated, Image, StyleSheet
 import { Card, ListItem, Button, Icon } from 'react-native-elements';
 import HTMLView from 'react-native-htmlview';
 import RNFetchBlob from 'rn-fetch-blob';
-import RNFS from react-native-fs;
-import extract from 'extract-zip';
+import RNFS from 'react-native-fs';
+
 export default class Story extends Component {
   static navigationOptions = {
     title: 'Story'
@@ -39,13 +39,7 @@ export default class Story extends Component {
     });
   }
   installStory = (sid, path) => {
-
-    const dir = "Download";
-    const target = "BooksOnWall";
-    //extract(source, {dir: target}, function (err) {
-        //console.warn(err);
-       // extraction is complete. make sure to handle the err
-    //})
+    return true;
   }
   componentDidMount() {
     if (!this.props.navigation.getParam('story') ) this.props.navigation.navigate('Stories');

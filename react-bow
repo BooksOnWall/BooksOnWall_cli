@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 #
 # Ccreate BooksOnWall mobile application
 #
@@ -73,7 +72,7 @@ parseArgs() {
 }
 
 if [[ $# -eq 0 ]] ; then
-    echo "Please indicate your project name and api url: ex sh create_bow.sh MyProject https://api.booksonwall.art"
+    echo "Please indicate your project name and api url: ex ./react-baw init MyProject https://api.booksonwall.art"
     exit 0
 fi
 
@@ -247,12 +246,8 @@ echo "VIROAPIKEY="8C94EE83-76E2-4683-ADEF-985A1F266665"" >> .env
 echo "MAPBOX="pk.eyJ1IjoiY3JvbGwiLCJhIjoiY2p4cWVmZDA2MDA0aTNkcnQxdXhldWxwZCJ9.3pr6-2NQQDd59UBRCEeenA"" >> .env
 echo $UENV >> .env
 
-
-
 echo "Installing packages"
-yarn add prop-types react-dom react-native-app-intro-slider react-navigation react-navigation-transitions react-navigation-stack react-native-reanimated yarn add react-navigation-tabs react-native-htmlview
-
-yarn add react-native-elements
+yarn add prop-types react-dom react-native-app-intro-slider react-navigation react-navigation-transitions react-navigation-stack react-native-reanimated react-navigation-tabs react-native-htmlview react-native-elements
 
 echo "Installing unstable lib"
 ## to enable GPS automaticly android only
@@ -269,10 +264,10 @@ yarn add react-native-splash-screen && react-native link react-native-splash-scr
 ## to make connection with the backoffice server and download new stories
 yarn add rn-fetch-blob@0.10.15 && react-native link rn-fetch-blob
 ## to manipulate downloaded story and store it in BooksOnWall storage directory
-yarn add react-native-fs@2.12 && react-native link react-native-fs
+yarn add react-native-fs@2.13.2 && react-native link react-native-fs
 ## to unzip the story.zip
-#yarn add react-native-zip-archive@4.0.0 && react-native link react-native-zip-archive
-yarn add extract-zip
+yarn add react-native-zip-archive@4.1.5 && react-native link react-native-zip-archive
+#yarn add extract-zip
 
 echo "Adding internationalization"
 yarn add react-native-localize
@@ -340,7 +335,7 @@ cp -r ../data/.gitignore .
 echo "Setting icon and splash"
 echo "Adding react-native-make used by setIcon and setSplash"
 # to be able to set Icon and Splash for android and ios Warning this package is unnecessary for react-navive@>=60
-yarn add -D @bam.tech/react-native-make
+yarn add @bam.tech/react-native-make -D
 react-native set-icon --path assets/icon/bow_adaptive-icon_1024.png
 react-native set-splash --path assets/splash/bow_splash_3000.png --resize contain --background="#1A1B1C"
 
