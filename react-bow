@@ -72,15 +72,17 @@ parseArgs() {
 }
 
 if [[ $# -eq 0 ]] ; then
-    echo "Please indicate your project name and api url: ex ./react-baw init MyProject https://api.booksonwall.art"
+    echo "Please indicate your project name and api url: ex ./react-bow init MyProject https://api.booksonwall.art"
     exit 0
 fi
 
 NAME=$2
+name="${NAME,,}"
 URL=$3
-UENV="URL="$URL
-echo "Creating project:" $NAME
-echo "Api URL:" $URL
+UENV="SERVER_URL="$URL
+echo -e "Creating project:" $NAME
+echo -e "Api URL:" $URL
+echo -e "com."$name
 echo "Checking local OS"
 unameOut="$(uname -s)"
 case "${unameOut}" in
@@ -91,7 +93,17 @@ case "${unameOut}" in
     *)          machine="UNKNOWN:${unameOut}"
 esac
 echo "System" ${machine}
-
+echo "Downloading react-native-mapbox-navigation";
+git clone https://github.com/SRHealth/react-native-mapbox-navigation RNMN
+echo "Extract ios navigation module from git project directory"
+mkdir -p data/ios
+cp -r RNMN/ios/Mapbox data/ios/.
+cp -r RNMN/ios/RNMapboxNavigation data/ios/.
+echo "Extract Android navigation module from git project directory"
+mkdir -p data/android
+cp -r RNMN/android/app/src/main/java/com/rnmapboxnavigation/Mapbox data/android/.
+echo "Extract NavigationView from git project directory"
+cp RNMN/NavigationView.js data/src/api/stories/stage/.
 echo "Looking if a previous ${NAME} project exist ..."
 DIR=$NAME
 if [ -d "$DIR" ]; then
@@ -241,13 +253,14 @@ echo 'react-viro init script complete! To setup for use with Android Studio/Xcod
 sh setup-ide.sh android
 echo "CREATING .env"
 # put here your VIRO api key , since version 2.17 outsourced free software not mandatory anymore
-echo "VIROAPIKEY="8C94EE83-76E2-4683-ADEF-985A1F266665"" >> .env
+echo 'VIROAPI_KEY="8C94EE83-76E2-4683-ADEF-985A1F266665"' >> .env
 # put here your MAPBOX api key https://docs.mapbox.com/help/how-mapbox-works/access-tokens/
-echo "MAPBOX="pk.eyJ1IjoiY3JvbGwiLCJhIjoiY2p4cWVmZDA2MDA0aTNkcnQxdXhldWxwZCJ9.3pr6-2NQQDd59UBRCEeenA"" >> .env
+echo 'MAPBOX_KEY="pk.eyJ1IjoiY3JvbGwiLCJhIjoiY2p4cWVmZDA2MDA0aTNkcnQxdXhldWxwZCJ9.3pr6-2NQQDd59UBRCEeenA"' >> .env
 echo $UENV >> .env
+echo "PROJECT_NAME="$2 >> .env
 
 echo "Installing packages"
-yarn add prop-types react-dom react-native-app-intro-slider react-navigation react-navigation-transitions react-navigation-stack react-native-reanimated react-navigation-tabs react-native-htmlview react-native-elements
+yarn add prop-types lodash react-dom react-native-app-intro-slider react-navigation react-navigation-transitions react-navigation-stack react-native-reanimated react-navigation-tabs react-native-htmlview react-native-elements react-native-awesome-alerts geolib
 
 echo "Installing unstable lib"
 ## to enable GPS automaticly android only
@@ -262,11 +275,11 @@ yarn add react-native-gesture-handler@^1.0.0 && react-native link react-native-g
 yarn add react-native-vector-icons && react-native link
 yarn add react-native-splash-screen && react-native link react-native-splash-screen
 ## to make connection with the backoffice server and download new stories
-yarn add rn-fetch-blob@0.10.15 && react-native link rn-fetch-blob
+yarn add rn-fetch-blob@0.10.15 && RNFB_ANDROID_PERMISSIONS=true react-native link
 ## to manipulate downloaded story and store it in BooksOnWall storage directory
 yarn add react-native-fs@2.13.2 && react-native link react-native-fs
 ## to unzip the story.zip
-yarn add react-native-zip-archive@4.1.5 && react-native link react-native-zip-archive
+#yarn add react-native-zip-archive@4.1.5 && react-native link react-native-zip-archive
 #yarn add extract-zip
 
 echo "Adding internationalization"
@@ -282,7 +295,8 @@ yarn add https://github.com/react-native-mapbox-gl/maps#7.0.1
 react-native link @react-native-mapbox-gl/maps
 yarn add @react-native-community/geolocation
 react-native link @react-native-community/geolocation
-
+# for destination calculation => used in MapboxClient.js
+yarn add @mapbox/mapbox-sdk
 
 echo "Adding netinfo to check connectivity"
 # to check if network is open and witch type of connection the mobile has
@@ -305,7 +319,7 @@ yarn react-native-jetifier
 
 echo "Adding commands to package.json"
 pwd
-SCRIPTS=`jq '.scripts = { doctor: "npx @react-native-community/cli doctor", link: "react-native link", setIcon: "react-native set-icon --path", setSplash: "react-native set-splash --path", postinstall: "yarn react-native-jetifier", prestart: "./node_modules/react-viro/bin/run_ngrok.sh", start: "node node_modules/react-native/local-cli/cli.js start", android: "react-native run-android --variant=arDebug", ios: "react-native run-ios --variant=arDebug" }' package.json`
+SCRIPTS=`jq '.scripts = { sync: "cp -r ../data/src/* src/.", doctor: "npx @react-native-community/cli doctor", link: "react-native link", setIcon: "react-native set-icon --path", setSplash: "react-native set-splash --path", postinstall: "yarn react-native-jetifier", prestart: "./node_modules/react-viro/bin/run_ngrok.sh", start: "node node_modules/react-native/local-cli/cli.js start", android: "react-native run-android --variant=arDebug", ios: "react-native run-ios --variant=arDebug" }' package.json`
 touch n.json && echo $SCRIPTS >> n.json
 rm package.json && touch package.json
 jq . n.json > package.json && rm n.json
@@ -329,6 +343,24 @@ cp ../data/README.md .
 #comment cp .git if you want to commit in another git repository
 cp -r ../data/.git .
 cp -r ../data/.gitignore .
+## adding mapbox navigation modules
+# https://github.com/SRHealth/react-native-mapbox-navigation
+echo -e "Install react-native-mapbox-navigation modules \n For Android \n And ios."
+#cp ios mlodule
+
+#cp android install
+cp -r ../data/android/Mapbox android/app/src/main/java/com/$name/.
+# add import com.$name.Mapbox.MapboxNavigationViewPackage; in MainApplication.java
+sed "20i\import\ com.$name.Mapbox.MapboxNavigationViewPackage;\n" android/app/src/main/java/com/$name/MainApplication.java
+
+# .env
+echo "Adding babel-plugin-transform-inline-environment-variables to get .env variables"
+yarn add react-native-dotenv
+yarn add babel-plugin-transform-inline-environment-variables -D
+yarn add metro-react-native-babel-preset -D
+cp ../data/.babelrc .
+cp ../data/.watchmanconfig .
+
 
 # icon & splash
 
