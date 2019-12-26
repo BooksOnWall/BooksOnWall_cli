@@ -93,17 +93,23 @@ case "${unameOut}" in
     *)          machine="UNKNOWN:${unameOut}"
 esac
 echo "System" ${machine}
-echo "Downloading react-native-mapbox-navigation";
-git clone https://github.com/SRHealth/react-native-mapbox-navigation RNMN
-echo "Extract ios navigation module from git project directory"
-mkdir -p data/ios
-cp -r RNMN/ios/Mapbox data/ios/.
-cp -r RNMN/ios/RNMapboxNavigation data/ios/.
-echo "Extract Android navigation module from git project directory"
-mkdir -p data/android
-cp -r RNMN/android/app/src/main/java/com/rnmapboxnavigation/Mapbox data/android/.
-echo "Extract NavigationView from git project directory"
-cp RNMN/NavigationView.js data/src/api/stories/stage/.
+
+if [ !-d RNMN ]; then
+  echo "Downloading react-native-mapbox-navigation";
+  git clone https://github.com/SRHealth/react-native-mapbox-navigation RNMN
+else
+  cd RNMN
+  git pull
+  cd ..
+  echo "Extract Android navigation module from git project directory"
+  mkdir -p data/android
+  cp -r RNMN/android/app/src/main/java/com/rnmapboxnavigation data/android/.
+  echo "Extract ios navigation module from git project directory"
+  mkdir -p data/ios
+  cp -r RNMN/ios data/ios
+  echo "Extract NavigationView from git project directory"
+  cp RNMN/NavigationView.js data/src/api/stories/stage/.
+fi
 echo "Looking if a previous ${NAME} project exist ..."
 DIR=$NAME
 if [ -d "$DIR" ]; then
@@ -349,9 +355,9 @@ echo -e "Install react-native-mapbox-navigation modules \n For Android \n And io
 #cp ios mlodule
 
 #cp android install
-cp -r ../data/android/Mapbox android/app/src/main/java/com/$name/.
+#cp -r ../data/android/Mapbox android/app/src/main/java/com/$name/.
 # add import com.$name.Mapbox.MapboxNavigationViewPackage; in MainApplication.java
-sed "20i\import\ com.$name.Mapbox.MapboxNavigationViewPackage;\n" android/app/src/main/java/com/$name/MainApplication.java
+#sed "20i\import\ com.$name.Mapbox.MapboxNavigationViewPackage;\n" android/app/src/main/java/com/$name/MainApplication.java
 
 # .env
 echo "Adding babel-plugin-transform-inline-environment-variables to get .env variables"
