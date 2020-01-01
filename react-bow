@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Ccreate BooksOnWall mobile application
+# Create BooksOnWall mobile application
 #
 #
 # This function prints the top level "help" notice (when the user types react-viro --help)
@@ -72,7 +72,7 @@ parseArgs() {
 }
 
 if [[ $# -eq 0 ]] ; then
-    echo "Please indicate your project name and api url: ex ./react-bow init MyProject https://api.booksonwall.art"
+    echo "\033[5;41;1;37m   *** ERROR *** Please indicate your project name and api url: ex ./react-bow init MyProject https://api.booksonwall.art  \033[0m"
     exit 0
 fi
 
@@ -80,9 +80,9 @@ NAME=$2
 name="${NAME,,}"
 URL=$3
 UENV="SERVER_URL="$URL
-echo -e "Creating project:" $NAME
-echo -e "Api URL:" $URL
-echo -e "com."$name
+echo -e "\033[1;32m Creating project:" $NAME "\033[0m"
+echo -e "\033[1;32m Api URL:" $URL "\033[0m"
+echo -e "\033[1;32m com."$name  "\033[0m"
 echo "Checking local OS"
 unameOut="$(uname -s)"
 case "${unameOut}" in
@@ -92,31 +92,71 @@ case "${unameOut}" in
     MINGW*)     machine=MinGw;;
     *)          machine="UNKNOWN:${unameOut}"
 esac
-echo "System" ${machine}
-
-if [ !-d RNMN ]; then
-  echo "Downloading react-native-mapbox-navigation";
+echo -e "\033[1;32m System" ${machine} "\033[0m"
+if [ ${machine} = "Mac" ]; then
+  Platform="all"
+else
+  Platform="android"
+fi
+echo -e "\033[1;32m Platform: " $Platform "\033[0m"
+###############################################################################
+## installing react-native unimodules https://github.com/SRHealth/react-native-mapbox-navigation
+## First download git project and kepp some datas
+###############################################################################
+if [ ! -d "RNMN" ]; then
+  echo -e "\033[1;32m Downloading react-native-mapbox-navigation \033[0m";
   git clone https://github.com/SRHealth/react-native-mapbox-navigation RNMN
 else
   cd RNMN
+  # watch if no update is required
+  echo -e "\033[1;32m Project react-native-mapbox-navigation already exist \033[0m , checking if update is available."
   git pull
   cd ..
-  echo "Extract Android navigation module from git project directory"
-  mkdir -p data/android
-  cp -r RNMN/android/app/src/main/java/com/rnmapboxnavigation data/android/.
-  echo "Extract ios navigation module from git project directory"
-  mkdir -p data/ios
-  cp -r RNMN/ios data/ios
-  echo "Extract NavigationView from git project directory"
-  cp RNMN/NavigationView.js data/src/api/stories/stage/.
 fi
+# Copy mapbox-navigation's files into data/.
+
+echo -e "\033[1;32m Extract Android navigation module \033[0m from git project directory"
+mkdir -p data/android
+cp -r RNMN/android/app/src/main/java/com/rnmapboxnavigation/Mapbox data/android/.
+echo -e "\033[1;32m Extract ios navigation module \033[0m from git project directory"
+mkdir -p data/ios
+cp -r RNMN/ios/* data/ios/.
+echo -e "\033[1;32m Extract NavigationView \033[0m from git project directory"
+cp RNMN/NavigationView.js data/src/api/stories/stage/.
+cp RNMN/App.js data/src/api/stories/stage/RNMNnav.js
+
+echo -e "\033[1;34m Changing mapbox-navigation \033[0m path and R"
+echo -e "\033[1;34m Changing com.rnmapboxnavigation \033[0m by com."$name" in:
+    => android/Mapbox/*
+      -> MapboxNavigationManager.java
+      -> MapboxNavigationViewManager.java
+      -> MapboxNavigationViewPackage.java"
+
+
+sed -i 's/com.rnmapboxnavigation.R/com.'$name'.R/g' data/android/Mapbox/MapboxNavigationManager.java
+sed -i 's/com.rnmapboxnavigation/com.'$name'/g' data/android/Mapbox/MapboxNavigationManager.java
+sed -i 's/com.rnmapboxnavigation.R/com.'$name'.R/g' data/android/Mapbox/MapboxNavigationViewManager.java
+sed -i 's/import\ android.support.annotation/import\ androidx.annotation/g' data/android//Mapbox/MapboxNavigationViewManager.java
+sed -i 's/com.rnmapboxnavigation/com.'$name'/g' data/android/Mapbox/MapboxNavigationViewManager.java
+sed -i 's/com.rnmapboxnavigation/com.'$name'/g' data/android/Mapbox/MapboxNavigationViewPackage.java
+# sed -i 's/com.rnmapboxnavigation/com.'$name'/g' data/android/MainApplication.java
+# sed -i "10i import com.booksonwall.BuildConfig;" data/android/MainApplication.java
+# sed -i 's/com.rnmapboxnavigation/com.'$name'/g' data/android/MainApplication.java
+# sed -i 's/com.rnmapboxnavigation/com.'$name'/g' data/android/MainActivity.java
+
+echo -e "\033[1;36m Others mapbox-navigation modification will happend later in the script \033[0m"
+#################################################################################
+##
+## End of Project react-native-mapbox-navigation backup
+##
+#################################################################################
 echo "Looking if a previous ${NAME} project exist ..."
 DIR=$NAME
 if [ -d "$DIR" ]; then
   # Take action if $DIR exists. #
-  echo "Previous project ${DIR} exist"
+  echo -e "Previous project ${DIR} exist"
 
-  echo "Backup config files from ${DIR} to data ..."
+  echo -e "Backup config files from ${DIR} to data ..."
   cp -r $DIR/.git data/.
   #cp -r $DIR/assets data/assets
   #cp -r $DIR/src data/src
@@ -128,13 +168,13 @@ if [ -d "$DIR" ]; then
   git rm -r * && git commit -m "fresh cleaning from BooksOnWall_cli" && git push
   cd ..
   rm -rf $DIR
-  echo "Previous project destroyed and git cleaned"
+  echo -e "Previous project destroyed and git cleaned"
 fi
 
 echo "Check dependencies ...."
 # to do add more verification version list "
 #
-echo -e "Let's Build BooksOnWall Mobile ....... \n Assembling the Framework ..... \n To make a new mobile application \n For ios and Android"
+echo -e "\033[1;36m Let's Build BooksOnWall Mobile \033[0m ....... \n Assembling the Framework ..... \n To make a new mobile application \n For ios and Android"
 
 ## react-viro init
 ##
@@ -193,6 +233,7 @@ case $1 in
     exit 1
   ;;
 esac
+
 # Now, if we've gotten to this point, then react-native has run and the relevant args are:
 # VIRO_PROJECT_NAME - name of the project that was created
 # VIRO_VERSION - since we specify the react-native version, this value should ideally
@@ -202,35 +243,35 @@ esac
 cd $VIRO_PROJECT_NAME
 echo "yarn installed" $YARN_INSTALLED
 if echo $VIRO_VERSION | grep '^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' > /dev/null; then
-  echo "Installing react-viro v"$VIRO_VERSION"..."
+  echo -e "\033[1;32m Installing react-viro v"$VIRO_VERSION"...\033[0m"
   if [ $YARN_INSTALLED -eq 0 ] ; then
-    yarn add react-viro@$VIRO_VERSION
+    yarn add react-viro@$VIRO_VERSION -E 2> >(grep -v warning 1>&2)
   else
     npm install -S -E react-viro@$VIRO_VERSION
   fi
 elif [ -f $VIRO_VERSION ]; then
-  echo "Installing react-viro from "$VIRO_VERSION"..."
+  echo -e "\033[1;32m Installing react-viro from "$VIRO_VERSION"...\033[0m"
   if [ $YARN_INSTALLED -eq 0 ] ; then
     yarn add file:$VIRO_VERSION
   else
     npm install $VIRO_VERSION
   fi
 elif [ -f ../$VIRO_VERSION ]; then
-  echo "Installing react-viro from "$VIRO_VERSION"..."
+  echo -e "\033[1;32m Installing react-viro from "$VIRO_VERSION"...\033[0m"
   if [ $YARN_INSTALLED -eq 0 ] ; then
     yarn add file:../$VIRO_VERSION
   else
     npm install ../$VIRO_VERSION
   fi
 elif [ "$VIRO_VERSION" = false ]; then
-  echo "Installing react-viro v"$REACT_VIRO_VERSION"..."
+  echo -e "\033[1;32m Installing react-viro v"$REACT_VIRO_VERSION"...\033[0m"
   if [ $YARN_INSTALLED -eq 0 ] ; then
-    yarn add react-viro@$REACT_VIRO_VERSION
+    yarn add react-viro@$REACT_VIRO_VERSION -E 2> >(grep -v warning 1>&2)
   else
     npm install -S -E react-viro@$REACT_VIRO_VERSION
   fi
 else
-  printf "Unknown version provided: "$VIRO_VERSION". Aborting!"
+  printf "\033[1;31m Unknown version provided: "$VIRO_VERSION". Aborting! \033[0m"
   exit 1
 fi
 
@@ -254,65 +295,124 @@ fi
 echo "remove package-lock.json as we use yarn instead of npm"
 rm -f package-lock.json
 
-echo 'react-viro init script complete! To setup for use with Android Studio/Xcode, please run setup-ide.sh script.'
+echo -e '\033[1;32m react-viro init script complete! \033[0m
+  To setup for use with Android Studio/Xcode,
+  please run setup-ide.sh script.'
 
-sh setup-ide.sh android
-echo "CREATING .env"
+##################################################################################
+##  End of react-native and react-viro default install
+##  Start the setup of targueted IDE ex: android|ios|all
+##################################################################################
+
+echo -e "\033[1;32m Setup ide for: " $Platform "\033[0m"
+sh setup-ide.sh $Platform
+
+echo -e "\033[1;32m CREATING .env \033[0m"
 # put here your VIRO api key , since version 2.17 outsourced free software not mandatory anymore
 echo 'VIROAPI_KEY="8C94EE83-76E2-4683-ADEF-985A1F266665"' >> .env
 # put here your MAPBOX api key https://docs.mapbox.com/help/how-mapbox-works/access-tokens/
-echo 'MAPBOX_KEY="pk.eyJ1IjoiY3JvbGwiLCJhIjoiY2p4cWVmZDA2MDA0aTNkcnQxdXhldWxwZCJ9.3pr6-2NQQDd59UBRCEeenA"' >> .env
+mapboxtoken="pk.eyJ1IjoiY3JvbGwiLCJhIjoiY2p4cWVmZDA2MDA0aTNkcnQxdXhldWxwZCJ9.3pr6-2NQQDd59UBRCEeenA"
+echo "MAPBOX_KEY='$mapboxtoken'" >> .env
 echo $UENV >> .env
 echo "PROJECT_NAME="$2 >> .env
 
-echo "Installing packages"
-yarn add prop-types lodash react-dom react-native-app-intro-slider react-navigation react-navigation-transitions react-navigation-stack react-native-reanimated react-navigation-tabs react-native-htmlview react-native-elements react-native-awesome-alerts geolib
+#################################################################################
+##
+## Before installing all the packages we have to set the
+##  - android-mapbox-sdk-navigation https://docs.mapbox.com/help/tutorials/android-navigation-sdk
+##
+#################################################################################
+echo -e "\033[1;32m Mapbox Sdk Navigation install \033[0m"
+# insert in repoitories maven { url 'https://mapbox.bintray.com/mapbox' } in android/build.gradle
+sed -i "30i \ \ \ \  maven { url 'https://mapbox.bintray.com/mapbox' }" android/build.gradle
+# insert in dependencies below implementation 'com.facebook.react:react-native:+' >> implementation 'com.mapbox.mapboxsdk:mapbox-android-navigation-ui:0.42.4' in andoid/app.build.gradle
+sed -i "162i \ \ \ \ implementation 'com.mapbox.mapboxsdk:mapbox-android-navigation-ui:0.42.4'" android/app/build.gradle
+sed -i "163i \ \ \ \ implementation 'androidx.annotation:annotation:1.1.0'" android/app/build.gradle
 
-echo "Installing unstable lib"
+#
+# add mapbox token in android project
+# nedd to be changes for .env use
+sed -i '2i <string name="mapbox_access_token">$mapboxtoken</string>' android/app/src/main/res/values/strings.xml
+###################################################################################
+## adding mapbox navigation modules previously stored from RNMN project
+## https://github.com/SRHealth/react-native-mapbox-navigation
+###################################################################################
+
+
+cp -r ../data/android/rnmapboxnavigation android/app/src/main/java/com/$name/.
+
+# add import com.$name.Mapbox.MapboxNavigationViewPackage; in MainApplication.java
+# sed "20i\import\ com.$name.Mapbox.MapboxNavigationViewPackage;\n" android/app/src/main/java/com/$name/MainApplication.java
+
+echo -e "\033[1;31m Missing mapbox-navigation ios \033[0m install need to be done later ... "
+
+#################################################################################
+##
+## First installing dependancies and react-native libs that need to be linked
+## Usueally happends well but need some verifications before compilation
+##
+#################################################################################
+echo -e "\033[1;32m Installing unstable lib \033[0m
+  - They are libs that are a bit buggy because the react-native version
+  is just below 0.60
+  - Some are 0.60 and androidX IOS 13 ready ,
+  some are not yet ready"
+
 ## to enable GPS automaticly android only
-yarn add react-native-android-location-enabler@1.1.0 && react-native link react-native-android-location-enabler
+yarn add react-native-android-location-enabler@1.1.0 2> >(grep -v warning 1>&2) && react-native link react-native-android-location-enabler
 ## to request permissions from the user
-yarn add react-native-permissions@2.0.0 && react-native link react-native-permissions
-
-yarn add react-native-screens@~1.0.0-alpha.23 && react-native link react-native-screens
+yarn add react-native-permissions@2.0.0 2> >(grep -v warning 1>&2) && react-native link react-native-permissions
+# react-native-reanimated
+yarn add react-native-reanimated@^1.4.0 2> >(grep -v warning 1>&2) && react-native link react-native-reanimated
+# screens
+yarn add react-native-screens@~1.0.0-alpha.23 2> >(grep -v warning 1>&2) && react-native link react-native-screens
 ## to manage pinch, touch , slide etc ...
-yarn add react-native-gesture-handler@^1.0.0 && react-native link react-native-gesture-handler
+yarn add react-native-gesture-handler@^1.0.0 2> >(grep -v warning 1>&2) && react-native link react-native-gesture-handler
 
-yarn add react-native-vector-icons && react-native link
-yarn add react-native-splash-screen && react-native link react-native-splash-screen
+yarn add react-native-vector-icons 2> >(grep -v warning 1>&2) && react-native link
+yarn add react-native-splash-screen 2> >(grep -v warning 1>&2) && react-native link react-native-splash-screen
 ## to make connection with the backoffice server and download new stories
-yarn add rn-fetch-blob@0.10.15 && RNFB_ANDROID_PERMISSIONS=true react-native link
+yarn add rn-fetch-blob@0.10.15 2> >(grep -v warning 1>&2) && RNFB_ANDROID_PERMISSIONS=true react-native link
 ## to manipulate downloaded story and store it in BooksOnWall storage directory
-yarn add react-native-fs@2.13.2 && react-native link react-native-fs
+yarn add react-native-fs@2.13.2 2> >(grep -v warning 1>&2) && react-native link react-native-fs
 ## to unzip the story.zip
+echo -e "\033[1;31m Warning react-native-zip-archive@4.1.5 not installed
+  because it won't compile yet:
+  https://github.com/mockingbot/react-native-zip-archive/issues/180 "
+
 #yarn add react-native-zip-archive@4.1.5 && react-native link react-native-zip-archive
 #yarn add extract-zip
 
-echo "Adding internationalization"
-yarn add react-native-localize
-react-native link react-native-localize
+echo -e "\033[1;32m  Installing react easy packages \033[0m"
+yarn add prop-types lodash react-dom react-native-app-intro-slider react-navigation react-navigation-transitions react-navigation-stack react-navigation-tabs react-native-htmlview react-native-elements react-native-awesome-alerts geolib 2> >(grep -v warning 1>&2)
+
+echo -e "\033[1;32m  Adding internationalization \033[0m"
+yarn add react-native-localize 2> >(grep -v warning 1>&2) && react-native link react-native-localize
 # yarn add react-native-intl react-int intl
 # react-native link react-native-intl
-yarn add i18n-js
+yarn add i18n-js 2> >(grep -v warning 1>&2)
 
-echo "Adding react-native-mapbox-gl"
-#yarn add  @react-native-mapbox-gl/maps
-yarn add https://github.com/react-native-mapbox-gl/maps#7.0.1
+echo -e "\033[1;32m Adding: \033[0m
+  -> \033[1;32m react-native-mapbox-gl \033[0m from github.com/react-native-mapbox-gl/maps#7.0.1 ,
+  -> \033[1;32m Mapbox SDK, \033[0m
+  -> \033[1;32m geolocation \033[0m"
+
+yarn add https://github.com/react-native-mapbox-gl/maps#7.0.1 2> >(grep -v warning 1>&2)
 react-native link @react-native-mapbox-gl/maps
-yarn add @react-native-community/geolocation
+yarn add @react-native-community/geolocation 2> >(grep -v warning 1>&2)
 react-native link @react-native-community/geolocation
 # for destination calculation => used in MapboxClient.js
-yarn add @mapbox/mapbox-sdk
+yarn add @mapbox/mapbox-sdk 2> >(grep -v warning 1>&2)
 
-echo "Adding netinfo to check connectivity"
+echo -e "\033[1;32m Adding netinfo to check connectivity \033[0m"
 # to check if network is open and witch type of connection the mobile has
-yarn add @react-native-community/netinfo@^3.0.0
+yarn add @react-native-community/netinfo@^3.0.0 2> >(grep -v warning 1>&2)
 react-native link @react-native-community/netinfo
 
-echo "Adding Andoid X compatibility"
+echo -e "\033[1;32m Adding Andoid X compatibility \033[0m"
 # Adding jetifier to rewrite package to facilitate migration to AndroidX
-yarn add @jumpn/react-native-jetifier -D
-echo "installing android arDebug"
+yarn add @jumpn/react-native-jetifier -D 2> >(grep -v warning 1>&2)
+echo -e "\033[1;32m installing android arDebug \033[0m"
 cd android
 ./gradlew install:arDebug
 
@@ -320,10 +420,10 @@ echo "android.useAndroidX=true" >> gradle.properties
 echo "android.enableJetifier=true" >> gradle.properties
 cd ../
 pwd
-echo "Running jetifier"
-yarn react-native-jetifier
+echo -e "\033[1;32m Running jetifier \033[0m"
+yarn react-native-jetifier 2> >(grep -v warning 1>&2)
 
-echo "Adding commands to package.json"
+echo -e "\033[1;32m Adding commands to package.json \033[0m"
 pwd
 SCRIPTS=`jq '.scripts = { sync: "cp -r ../data/src/* src/.", doctor: "npx @react-native-community/cli doctor", link: "react-native link", setIcon: "react-native set-icon --path", setSplash: "react-native set-splash --path", postinstall: "yarn react-native-jetifier", prestart: "./node_modules/react-viro/bin/run_ngrok.sh", start: "node node_modules/react-native/local-cli/cli.js start", android: "react-native run-android --variant=arDebug", ios: "react-native run-ios --variant=arDebug" }' package.json`
 touch n.json && echo $SCRIPTS >> n.json
@@ -335,45 +435,49 @@ rm package.json && touch package.json
 jq . n.json > package.json && rm n.json
 #jq "./package.json"
 # copy files
-echo "Copy src directory"
+echo -e "\033[1;32m Copy src directory \033[0m"
 cp -r ../data/src .
-echo "Copy assets"
+echo -e "\033[1;32m Copy assets ... \033[0m"
 cp -r ../data/assets .
 
-echo "Switch main app.js page"
+echo -e "\033[1;32m Switch main app.js page \033[0m"
 
 mv App.js src/Ar.js
 mv src/App.js App.js
 mv js src/.
 cp ../data/README.md .
-#comment cp .git if you want to commit in another git repository
-cp -r ../data/.git .
-cp -r ../data/.gitignore .
-## adding mapbox navigation modules
-# https://github.com/SRHealth/react-native-mapbox-navigation
-echo -e "Install react-native-mapbox-navigation modules \n For Android \n And ios."
-#cp ios mlodule
 
-#cp android install
-#cp -r ../data/android/Mapbox android/app/src/main/java/com/$name/.
-# add import com.$name.Mapbox.MapboxNavigationViewPackage; in MainApplication.java
-#sed "20i\import\ com.$name.Mapbox.MapboxNavigationViewPackage;\n" android/app/src/main/java/com/$name/MainApplication.java
+if [ -d "../data/.git" ]; then
+  # comment cp ../data/.git . if you want to commit in another git repository
+  cp -r ../data/.git .
+fi
+
+if [ -f "../data/.gitignore" ]; then
+  cp  ../data/.gitignore .
+fi
+
 
 # .env
-echo "Adding babel-plugin-transform-inline-environment-variables to get .env variables"
-yarn add react-native-dotenv
-yarn add babel-plugin-transform-inline-environment-variables -D
-yarn add metro-react-native-babel-preset -D
-cp ../data/.babelrc .
-cp ../data/.watchmanconfig .
-
+echo -e "\033[1;32m Adding babel-plugin-transform-inline-environment-variables \033[0m
+  to get .env variables"
+yarn add react-native-dotenv 2> >(grep -v warning 1>&2)
+yarn add babel-plugin-transform-inline-environment-variables -D 2> >(grep -v warning 1>&2)
+yarn add metro-react-native-babel-preset -D 2> >(grep -v warning 1>&2)
+if [ -f "../data/.gitignore" ]
+then
+  cp ../data/.babelrc .
+fi
+if [ -f "../data/.watchmanconfig" ]
+then
+  cp ../data/.watchmanconfig .
+fi
 
 # icon & splash
 
-echo "Setting icon and splash"
-echo "Adding react-native-make used by setIcon and setSplash"
+echo -e "\033[1;32m Setting icon and splash \033[0m"
+echo -e "\033[1;32m Adding react-native-make used by setIcon and setSplash \033[0m"
 # to be able to set Icon and Splash for android and ios Warning this package is unnecessary for react-navive@>=60
-yarn add @bam.tech/react-native-make -D
+yarn add @bam.tech/react-native-make -D 2> >(grep -v warning 1>&2)
 react-native set-icon --path assets/icon/bow_adaptive-icon_1024.png
 react-native set-splash --path assets/splash/bow_splash_3000.png --resize contain --background="#1A1B1C"
 
@@ -381,11 +485,16 @@ react-native set-splash --path assets/splash/bow_splash_3000.png --resize contai
 # git add .buckconfig .flowconfig .gitattributes .gitignore .watchmanconfig App.js README.md __tests__/ android/ app.json assets/ babel.config.js bin/ index.android.js index.ios.js index.js ios/ jetificableGroups.json metro.config.js package.json rn-cli.config.js setup-ide.sh src/
 # git commit -m "new BooksOnWall_cli build"
 # git push
-echo -e "Checking that the Developement Environement Variables are well set"
+echo -e "\033[1;32m Adding reactotron-react-native \033[0m
+  for debug and dev purpose
+  and \033[1;32m @react-native-community/cli doctor \033[0m
+  Checking that the Developement Environement Variables are well set"
+
+yarn add reactotron-react-native -D 2> >(grep -v warning 1>&2)
 npx @react-native-community/cli doctor
 # End of script
-echo "Your mobile application is ready to build"
-echo "Connect your phone to the computer"
-echo "cd" $2
-echo "yarn start && yarn android to build"
+echo -e "\033[1;32m Your mobile application is ready to build  \033[0m"
+echo -e "\033[1;32m Connect your phone to the computer  \033[0m"
+echo -e "\033[1;32m cd" $2 " \033[0m"
+echo -e "\033[1;32m yarn start && yarn android to build  \033[0m"
 exit 0

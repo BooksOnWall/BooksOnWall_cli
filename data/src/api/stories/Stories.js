@@ -19,7 +19,7 @@ export default class Stories extends Component {
     this.state = {
       Platform: Platform,
       stories: [],
-      storiesURL: 'https://api.booksonwall.art/stories',
+      storiesURL: this.props.screenProps.stories,
       isLoading: true,
     };
   }
