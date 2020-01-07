@@ -1,60 +1,36 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- * @flow
- */
-
-import React, { Component } from "react";
+import React, {Component} from 'react';
+import MapboxGL from '@react-native-mapbox-gl/maps';
 import {
-  Alert,
   Platform,
-  StyleSheet,
   Text,
+  PermissionsAndroid,
+  Alert,
+  SafeAreaView,
   View,
-  Button,
-  PermissionsAndroid
-} from "react-native";
+  StyleSheet } from 'react-native';
+import {Button} from 'react-native-elements';
+import {lineString as makeLineString} from '@turf/helpers';
 import NavigationView from "./NavigationView";
 import { NativeModules } from "react-native";
-import Geolocation from '@react-native-community/geolocation';
 
 type Props = {};
-export default class App extends Component<Props,$FlowFixMeState > {
-  state = {
-    initialPosition: null,
-    lastPosition: null,
-    granted: Platform.OS === "ios",
-    fromLat: -34.90949779775191,
-    fromLong: -56.17891507941232,
-    toLat: -34.90949779775191 ,
-    toLong: -56.17891507941232
-  };
-  watchID: ?number = null;
+export default class ToStage extends Component<Props> {
+  constructor(props) {
+    super(props);
+    this.state = {
+      granted: Platform.OS === "ios",
+      fromLat: -56.17891507941232,
+      fromLong: -34.90949779775191,
+      toLat: -56.177511043686316,
+      toLong: -34.909745005492645
+    };
+  }
   componentDidMount() {
     if (!this.state.granted) {
       this.requestFineLocationPermission();
     }
-    // Instead of navigator.geolocation, just use Geolocation.
-    Geolocation.getCurrentPosition(
-      position => {
-        const initialPosition = position;
-        this.setState({fromLat: position.coords.latitude, fromLong: position.coords.longitude})
-        this.setState({initialPosition});
-      },
-      error => Alert.alert('Error', JSON.stringify(error)),
-      {enableHighAccuracy: true, timeout: 20000, maximumAge: 1000},
-    );
-    this.watchID = Geolocation.watchPosition(position => {
-      const lastPosition = position;
-      this.setState({lastPosition});
-    });
+  }
 
-  }
-  componentWillUnmount() {
-   this.watchID != null && Geolocation.clearWatch(this.watchID);
-  }
   async requestFineLocationPermission() {
     try {
       const granted = await PermissionsAndroid.request(
@@ -77,18 +53,27 @@ export default class App extends Component<Props,$FlowFixMeState > {
   render() {
     const { granted, fromLat, fromLong, toLat, toLong } = this.state;
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container}>
         <View style={styles.subcontainer}>
-          <Text>
-            <Text style={styles.welcome}>Initial position:</Text>
-            {this.state.initialPosition ? JSON.stringify(this.state.initialPosition.coords) : ''}
+          <Text style={styles.welcome}>
+            Welcome to Mapbox Navigation for React Native
           </Text>
-          <Text>
-            <Text style={styles.welcome}>Current position: </Text>
-            {this.state.lastPosition ? JSON.stringify(this.state.lastPosition.coords) : ''}
-          </Text>
-        <View>
         </View>
+        {granted && (
+          <NavigationView
+            style={styles.navigation}
+            destination={{
+              lat: toLat,
+              long: toLong
+            }}
+            origin={{
+              lat: fromLat,
+              long: fromLong
+            }}
+          />
+        )}
+        <View style={styles.subcontainer}>
+          <Text style={styles.welcome}>Another View !</Text>
           {Platform.OS === "android" && (
             <Button
               title={"Start Navigation - NativeModule"}
@@ -103,7 +88,7 @@ export default class App extends Component<Props,$FlowFixMeState > {
             />
           )}
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 }

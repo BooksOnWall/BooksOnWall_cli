@@ -4,7 +4,8 @@ import {request, check, PERMISSIONS, RESULTS} from 'react-native-permissions';
 
 export default class Stage extends Component {
   static navigationOptions = {
-    title: 'Stage'
+    title: 'Stage',
+    headerShown: false
   };
   componentDidMount = async () => {
     try {

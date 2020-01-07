@@ -1,5 +1,6 @@
 import React, {Component} from 'react';
-import { Alert, Platform, TouchableOpacity, ScrollView, SafeAreaView, Animated, Image, StyleSheet, View, Text, I18nManager } from 'react-native';
+import SafeAreaView from 'react-native-safe-area-view';
+import { Alert, Platform, TouchableOpacity, ScrollView, Animated, Image, StyleSheet, View, Text, I18nManager } from 'react-native';
 import { Card, ListItem, Button, Icon } from 'react-native-elements';
 import HTMLView from 'react-native-htmlview';
 import RNFetchBlob from 'rn-fetch-blob';
@@ -23,7 +24,8 @@ function humanFileSize(bytes, si) {
 
 export default class Story extends Component {
   static navigationOptions = {
-    title: 'Story'
+    title: 'Story',
+    headerShown: false
   };
   constructor(props) {
     super(props);

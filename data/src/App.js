@@ -2,7 +2,9 @@ import React , { Component } from 'react';
 if(__DEV__) {
   import('./src/utils/ReactotronConfig').then(() => console.log('Reactotron Configured'));
 }
-import { TouchableOpacity, SafeAreaView, StyleSheet, View, Text, ActivityIndicator, Platform } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import SafeAreaView from 'react-native-safe-area-view';
+import { TouchableOpacity, StyleSheet, View, Text, ActivityIndicator, Platform } from 'react-native';
 import { createAppContainer } from 'react-navigation';
 import { createStackNavigator } from 'react-navigation-stack';
 import { fromRight } from 'react-navigation-transitions';
@@ -12,7 +14,7 @@ import Stories from './src/api/stories/Stories';
 import Story from './src/api/stories/Story';
 import Stages from './src/api/stories/stages/Stages';
 import Stage from './src/api/stories/stage/Stage';
-import NavigationView from './src/api/stories/stage/NavigationView';
+//import NavigationView from './src/api/stories/stage/NavigationView';
 import ToStage from './src/api/stories/stage/toStage';
 import { createBottomTabNavigator } from 'react-navigation-tabs';
 import SplashScreen from 'react-native-splash-screen';
@@ -34,14 +36,12 @@ const MainNavigator = createStackNavigator({
   Story: { screen: Story},
   Stages: { screen: Stages},
   Stage: { screen: Stage},
-  ToStage: {screen: ToStage},
-  NavigationView: {screen: NavigationView}
+  ToStage: {screen: ToStage}
 },
 {
-    headerMode: 'none',
     initialRouteName: 'Intro',
     navigationOptions: {
-      header: null
+      headerShown: false
     }
 
 });
@@ -238,12 +238,14 @@ export default class App extends Component {
   render() {
     if (this.state.isLoading) {
       return (
-        <SafeAreaView style={styles.container}>
-          <ActivityIndicator />
-        </SafeAreaView>
+        <SafeAreaProvider>
+          <SafeAreaView style={styles.container}>
+            <ActivityIndicator />
+          </SafeAreaView>
+        </SafeAreaProvider>
       );
     }
-    return ( <AppContainer screenProps={this.state} setState={this.setState} /> );
+    return ( <SafeAreaProvider><AppContainer screenProps={this.state} setState={this.setState} /></SafeAreaProvider> );
   }
 }
 const styles = StyleSheet.create({

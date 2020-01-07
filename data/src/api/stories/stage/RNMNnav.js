@@ -8,7 +8,6 @@
 
 import React, { Component } from "react";
 import {
-  Alert,
   Platform,
   StyleSheet,
   Text,
@@ -18,10 +17,8 @@ import {
 } from "react-native";
 import NavigationView from "./NavigationView";
 import { NativeModules } from "react-native";
-import Geolocation from '@react-native-community/geolocation';
-
 type Props = {};
-export default class App extends Component<Props,$FlowFixMeState > {
+export default class App extends Component<Props> {
   state = {
     initialPosition: null,
     lastPosition: null,
@@ -55,6 +52,7 @@ export default class App extends Component<Props,$FlowFixMeState > {
   componentWillUnmount() {
    this.watchID != null && Geolocation.clearWatch(this.watchID);
   }
+
   async requestFineLocationPermission() {
     try {
       const granted = await PermissionsAndroid.request(
@@ -79,16 +77,25 @@ export default class App extends Component<Props,$FlowFixMeState > {
     return (
       <View style={styles.container}>
         <View style={styles.subcontainer}>
-          <Text>
-            <Text style={styles.welcome}>Initial position:</Text>
-            {this.state.initialPosition ? JSON.stringify(this.state.initialPosition.coords) : ''}
+          <Text style={styles.welcome}>
+            Welcome to Mapbox Navigation for React Native 0.59.9
           </Text>
-          <Text>
-            <Text style={styles.welcome}>Current position: </Text>
-            {this.state.lastPosition ? JSON.stringify(this.state.lastPosition.coords) : ''}
-          </Text>
-        <View>
         </View>
+        {granted && (
+          <NavigationView
+            style={styles.navigation}
+            destination={{
+              lat: toLat,
+              long: toLong
+            }}
+            origin={{
+              lat: fromLat,
+              long: fromLong
+            }}
+          />
+        )}
+        <View style={styles.subcontainer}>
+          <Text style={styles.welcome}>Another View !</Text>
           {Platform.OS === "android" && (
             <Button
               title={"Start Navigation - NativeModule"}

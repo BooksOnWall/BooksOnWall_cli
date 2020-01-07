@@ -53,7 +53,8 @@ MapboxGL.setAccessToken('pk.eyJ1IjoiY3JvbGwiLCJhIjoiY2p4cWVmZDA2MDA0aTNkcnQxdXhl
 
 class ToPath extends Component {
   static navigationOptions = {
-    title: 'To Stage'
+    title: 'To Stage',
+    headerShown: false
   };
   static propTypes = {
     ...BaseExamplePropTypes,

@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
+import SafeAreaView from 'react-native-safe-area-view';
 import {
-  SafeAreaView,
   TouchableOpacity,
   TouchableHighlight,
   FlatList,
@@ -25,6 +25,7 @@ export default class Stories extends Component {
   }
   static navigationOptions = {
     title: 'Stories',
+    headerShown: false,
   };
   componentDidMount = async () => {
     try {
