@@ -362,6 +362,7 @@ sed -i "164i \ \ \ \ implementation 'androidx.annotation:annotation:1.1.0'" andr
 #
 # add mapbox token in android project
 # need to be changes for .env use
+echo -e "\033[1;32m Adding Mapbox access_token in android/app/main/res/values/strings.xml  \033[0m"
 sed -i "2i <string name=\"mapbox_access_token\">"$mapboxtoken"</string>" android/app/src/main/res/values/strings.xml
 
 ###################################################################################

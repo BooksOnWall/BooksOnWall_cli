@@ -19,10 +19,12 @@ import {
 import NavigationView from "./NavigationView";
 import { NativeModules } from "react-native";
 import Geolocation from '@react-native-community/geolocation';
-
+import { MAPBOX_KEY  } from 'react-native-dotenv';
 type Props = {};
 export default class App extends Component<Props,$FlowFixMeState > {
   state = {
+    access_token: MAPBOX_KEY,
+    profile: 'mapbox/walking',
     initialPosition: null,
     lastPosition: null,
     granted: Platform.OS === "ios",
@@ -75,7 +77,7 @@ export default class App extends Component<Props,$FlowFixMeState > {
   }
 
   render() {
-    const { granted, fromLat, fromLong, toLat, toLong } = this.state;
+    const { access_token, profile, granted, fromLat, fromLong, toLat, toLong } = this.state;
     return (
       <View style={styles.container}>
         <View style={styles.subcontainer}>
@@ -97,7 +99,9 @@ export default class App extends Component<Props,$FlowFixMeState > {
                   fromLat,
                   fromLong,
                   toLat,
-                  toLong
+                  toLong,
+                  // profile,
+                  // access_token
                 );
               }}
             />
