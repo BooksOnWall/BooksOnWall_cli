@@ -1,2 +1,5 @@
 # remove BooksOnWall build
-BooksOnWall 
+BooksOnWall
+data/android
+data/ios
+ 
