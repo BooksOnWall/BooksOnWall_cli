@@ -9,7 +9,7 @@
 
 [react-vivo-cli](https://docs.viromedia.com/docs)
 [rninit](http://)
-## Set youtr nodejs environement 
+## Set your nodejs environement 
 #### Determining your Node version
 First off, let's figure out which version of Node is currently installed.
 
