@@ -9,8 +9,28 @@
 
 [react-vivo-cli](https://docs.viromedia.com/docs)
 [rninit](http://)
+## Set youtr nodejs environement 
+#### Determining your Node version
+First off, let's figure out which version of Node is currently installed.
 
+`node -v`
+
+The version number displayed is the one that's currently active on your machine. Now, let's install a program called n that will let us easily switch between Node versions.
+
+`sudo npm i -g n`
+
+##### Upgrading to the latest stable version
+Once n is installed, this simple command will update you to the latest stable version of Node.
+
+`sudo n stable`
+```
+[tom@tom-desk build]$ sudo n stable 
+   installed : v12.14.1 (with npm 6.13.4)
+
+```
 ## Set your Android Environnement
+
+nodejs v13.x reject 3 libs from installing and react-native link we need v12.x to compile correctly 
 
 For Android, make sure you have downloaded and installed Android Studio from here to get required SDK and platform-tools for building android apps Make sure you have the required environment variables set - $ANDROID_HOME, and added platform-tools to $PATH variable. If not,
 ```
