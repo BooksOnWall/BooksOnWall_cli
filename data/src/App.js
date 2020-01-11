@@ -222,6 +222,7 @@ export default class App extends Component {
       })
       .then(data => {
           if(data) {
+            console.table(data.stories);
             return this.setState({stories: data.stories, isLoading: false});
           } else {
             console.log('No Data received from the server');
@@ -240,7 +241,7 @@ export default class App extends Component {
       return (
         <SafeAreaProvider>
           <SafeAreaView style={styles.container}>
-            <ActivityIndicator />
+            <ActivityIndicator size="large" color="#0000ff" />
           </SafeAreaView>
         </SafeAreaProvider>
       );

@@ -8,51 +8,95 @@
 
 import React, { Component } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Platform,
   StyleSheet,
   Text,
   View,
-  Button,
   PermissionsAndroid
 } from "react-native";
 import NavigationView from "./NavigationView";
 import { NativeModules } from "react-native";
 import Geolocation from '@react-native-community/geolocation';
 import { MAPBOX_KEY  } from 'react-native-dotenv';
+import { Card, ButtonGroup, Button, ThemeProvider } from 'react-native-elements';
+import  distance from '@turf/distance';
+import Reactotron from 'reactotron-react-native';
 type Props = {};
-export default class App extends Component<Props,$FlowFixMeState > {
-  state = {
-    access_token: MAPBOX_KEY,
-    profile: 'mapbox/walking',
-    initialPosition: null,
-    lastPosition: null,
-    granted: Platform.OS === "ios",
-    fromLat: -34.90949779775191,
-    fromLong: -56.17891507941232,
-    toLat: -34.90949779775191 ,
-    toLong: -56.17891507941232
-  };
-  watchID: ?number = null;
-  componentDidMount() {
-    if (!this.state.granted) {
-      this.requestFineLocationPermission();
+
+export default class ToStage extends Component<Props,$FlowFixMeState > {
+  constructor () {
+    super()
+    this.state = {
+      selectedIndex: 0,
+      access_token: MAPBOX_KEY,
+      profile: 'mapbox/walking',
+      initialPosition: null,
+      lastPosition: null,
+      granted: Platform.OS === 'ios',
+      fromLat: -34.90949779775191,
+      fromLong: -56.17891507941232,
+      toLat: -34.90949779775191 ,
+      toLong: -56.17891507941232,
+      distance: null,
     }
-    // Instead of navigator.geolocation, just use Geolocation.
-    Geolocation.getCurrentPosition(
-      position => {
-        const initialPosition = position;
-        this.setState({fromLat: position.coords.latitude, fromLong: position.coords.longitude})
-        this.setState({initialPosition});
+
+    this.updateIndex = this.updateIndex.bind(this)
+  }
+  updateIndex = (selectedIndex) => {
+    this.setState({selectedIndex})
+  }
+  watchID: ?number = null;
+  componentDidMount = async () => {
+    try {
+      if (!this.state.granted) {
+        await this.requestFineLocationPermission();
+      }
+      // Instead of navigator.geolocation, just use Geolocation.
+      await Geolocation.getCurrentPosition(
+        position => {
+          const initialPosition = position;
+          this.setState({fromLat: position.coords.latitude, fromLong: position.coords.longitude});
+          this.setState({initialPosition});
+        },
+        error => Alert.alert('Error', JSON.stringify(error)),
+        {enableHighAccuracy: true, timeout: 2000, maximumAge: 1000},
+      );
+      this.watchID = await Geolocation.watchPosition(position => {
+        const lastPosition = position;
+        this.setState({lastPosition});
+        this.setState({fromLat: position.coords.latitude, fromLong: position.coords.longitude});
+        let from = {
+          "type": "Feature",
+          "properties": {},
+            "geometry": {
+              "type": "Point",
+              "coordinates": [this.state.fromLong, this.state.fromLat]
+            }
+          };
+          let to = {
+            "type": "Feature",
+            "properties": {},
+              "geometry": {
+                "type": "Point",
+                "coordinates": [this.state.toLong, this.state.toLat]
+              }
+            };
+          let units = "kilometers";
+          let dis = distance(from, to, units);
+          Reactotron.log('distance', dis);
+          if (dis) {
+            this.setState({distance: dis});
+          };
       },
       error => Alert.alert('Error', JSON.stringify(error)),
-      {enableHighAccuracy: true, timeout: 20000, maximumAge: 1000},
-    );
-    this.watchID = Geolocation.watchPosition(position => {
-      const lastPosition = position;
-      this.setState({lastPosition});
-    });
+      {timeout: 2000, maximumAge: 1000, enableHighAccuracy: true, distanceFilter: 1},
+      );
 
+    } catch(e) {
+      console.log(e);
+    }
   }
   componentWillUnmount() {
    this.watchID != null && Geolocation.clearWatch(this.watchID);
@@ -69,7 +113,7 @@ export default class App extends Component<Props,$FlowFixMeState > {
       if (granted === PermissionsAndroid.RESULTS.GRANTED) {
         this.setState({ granted: true });
       } else {
-        console.log("ACCESS_FINE_LOCATION permission denied");
+        Reactotron.log("ACCESS_FINE_LOCATION permission denied");
       }
     } catch (err) {
       console.warn(err);
@@ -77,43 +121,61 @@ export default class App extends Component<Props,$FlowFixMeState > {
   }
 
   render() {
-    const { access_token, profile, granted, fromLat, fromLong, toLat, toLong } = this.state;
+    const buttons = ['Auto', 'Pedestrian', 'Bicycle'];
+    const { distance, selectedIndex, access_token, profile, granted, fromLat, fromLong, toLat, toLong } = this.state;
+    if (!distance || this.state.Platform === 'web') {
+      return (
+        <View style={styles.loader}>
+          <ActivityIndicator size="large" color="#0000ff" />
+        </View>
+      );
+    }
     return (
-      <View style={styles.container}>
-        <View style={styles.subcontainer}>
-          <Text>
-            <Text style={styles.welcome}>Initial position:</Text>
-            {this.state.initialPosition ? JSON.stringify(this.state.initialPosition.coords) : ''}
-          </Text>
-          <Text>
-            <Text style={styles.welcome}>Current position: </Text>
-            {this.state.lastPosition ? JSON.stringify(this.state.lastPosition.coords) : ''}
-          </Text>
-        <View>
-        </View>
-          {Platform.OS === "android" && (
-            <Button
-              title={"Start Navigation - NativeModule"}
-              onPress={() => {
-                NativeModules.MapboxNavigation.navigate(
-                  fromLat,
-                  fromLong,
-                  toLat,
-                  toLong,
-                  // profile,
-                  // access_token
-                );
-              }}
+      <ThemeProvider>
+        <View style={styles.container}>
+          <Card style={styles.container}
+            title='Story Title'
+            >
+            <Text>You are at {distance.toFixed(2)} km from the beginning of your story.</Text>
+            <Text> Please choose your mode of transportation and press Start Navigation.</Text>
+            <ButtonGroup
+            onPress={this.updateIndex}
+            selectedIndex={selectedIndex}
+            buttons={buttons}
+            containerStyle={{height: 40}}
             />
-          )}
+
+              {Platform.OS === 'android' && (
+                <Button
+                  buttonStyle={{borderRadius: 0, marginLeft: 0, marginRight: 0, marginBottom: 0}}
+                  title={"Start Navigation"}
+                  onPress={() => {
+                    NativeModules.MapboxNavigation.navigate(
+                      fromLat,
+                      fromLong,
+                      toLat,
+                      toLong,
+                      // profile,
+                      // access_token
+                    );
+                  }}
+                />
+              )}
+          </Card>
         </View>
-      </View>
+      </ThemeProvider>
     );
   }
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    justifyContent: "flex-start",
+    alignItems: "stretch",
+    backgroundColor: "whitesmoke"
+  },
+  loader: {
     flex: 1,
     justifyContent: "center",
     alignItems: "stretch",

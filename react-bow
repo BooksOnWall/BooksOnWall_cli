@@ -10,7 +10,7 @@ REACT_NATIVE_VERSION=0.59.9
 REACT_VIRO_VERSION=2.17.0
 
 printHelp() {
-  printf "\n  ================== react-viro cli ====================
+  printf "\n  ================== react-viro cl ====================
   The react-bow script is a wrapper around the react-viro and the react-native cli tool that facilitates setting
   up a react-bow project.
 
@@ -379,7 +379,6 @@ cp ../data/android/values/styles.xml android/app/src/main/res/values/.
 # mkdir -p android/app/src/main/res/layout
 # cp ../data/android/navigation_view.xml android/app/src/main/res/layout/navigation_view.xml
 
-
 echo -e "\033[1;32m Installing Mapbox navigation in android ui manager \033[0m"
 
 sed -i "164i \ \ \ \ implementation 'androidx.annotation:annotation:1.1.0'" android/app/build.gradle
@@ -442,13 +441,15 @@ yarn add i18n-js 2> >(grep -v warning 1>&2)
  echo -e "\033[1;32m Adding: \033[0m
    -> \033[1;32m react-native-mapbox-gl \033[0m from github.com/react-native-mapbox-gl/maps#7.0.1 ,
    -> \033[1;32m Mapbox SDK, \033[0m
-   -> \033[1;32m geolocation \033[0m"
+   -> \033[1;32m geolocation \033[0m
+   -> \033[1;32m @turf/distance \033[0m"
 # adding mapbox-gl/maps
 yarn add https://github.com/react-native-mapbox-gl/maps#7.0.1 2> >(grep -v warning 1>&2)
 react-native link @react-native-mapbox-gl/maps
 
 # for destination calculation => used in MapboxClient.js
 yarn add @mapbox/mapbox-sdk 2> >(grep -v warning 1>&2)
+yarn add @turf/distance 2> >(grep -v warning 1>&2)
 
 echo -e "\033[1;32m Adding netinfo to check connectivity \033[0m"
 # to check if network is open and witch type of connection the mobile has
