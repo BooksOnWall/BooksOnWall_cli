@@ -8,7 +8,7 @@ import { TouchableOpacity, StyleSheet, View, Text, ActivityIndicator, Platform }
 import { createAppContainer } from 'react-navigation';
 import { createStackNavigator } from 'react-navigation-stack';
 import { fromRight } from 'react-navigation-transitions';
-import AR from './src/Ar';
+import ToAr from './src/api/stories/stage/toAr';
 import Intro from './src/api/intro/intro';
 import Stories from './src/api/stories/Stories';
 import Story from './src/api/stories/Story';
@@ -36,7 +36,8 @@ const MainNavigator = createStackNavigator({
   Story: { screen: Story},
   Stages: { screen: Stages},
   Stage: { screen: Stage},
-  ToStage: {screen: ToStage}
+  ToStage: {screen: ToStage},
+  ToAr: {screen: ToAr}
 },
 {
     initialRouteName: 'Intro',

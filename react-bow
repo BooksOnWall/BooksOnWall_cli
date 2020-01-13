@@ -464,6 +464,11 @@ echo -e "\033[1;32m installing androidX compliance \033[0m"
 cd android
 # ./gradlew install:arDebug
 
+echo -e "\033[1;32m Adding Sound and Video player \033[0m"
+yarn add react-native-keep-awake 2> >(grep -v warning 1>&2) && react-native link react-native-keep-awake
+yarn add react-native-sound 2> >(grep -v warning 1>&2) && react-native link react-native-sound
+yarn add react-native-video@^4.0.0 2> >(grep -v warning 1>&2) && react-native link react-native-video
+
 echo "android.useAndroidX=true" >> gradle.properties
 echo "android.enableJetifier=true" >> gradle.properties
 cd ../

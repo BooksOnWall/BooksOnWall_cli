@@ -7,6 +7,7 @@ import { MAPBOX_KEY  } from 'react-native-dotenv';
 import  distance from '@turf/distance';
 import * as RNFS from 'react-native-fs';
 import Reactotron from 'reactotron-react-native';
+import Sound from 'react-native-sound';
 
 function humanFileSize(bytes, si) {
     var thresh = si ? 1000 : 1024;
@@ -53,6 +54,7 @@ export default class Stories extends Component {
     this.storiesCheck = this.storiesCheck.bind(this);
   }
   watchID: ?number = null;
+
   getCurrentLocation = async () => {
     try {
       // Instead of navigator.geolocation, just use Geolocation.

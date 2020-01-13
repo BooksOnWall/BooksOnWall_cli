@@ -223,7 +223,9 @@ export default class Story extends Component {
     const storyPlay = () => <Icon raised name='play-circle' type='font-awesome' color='#f50' onPress={() => this.launchStory()} />;
     const storyDelete = () => <Icon raised name='trash' type='font-awesome' color='#f50' onPress={() => this.deleteStory(story.id)} />;
     const storyInstall = () => <Icon raised name='download' type='font-awesome' color='#f50' onPress={() => this.downloadStory(story.id)} />;
-    const dlbuttons = (story.isInstalled) ? [ { element: storyDelete }, { element: storyPlay }]: [ { element: storyInstall }];
+    const storyAr = () => <Icon raised name='road' type='font-awesome' color='#f50' onPress={() => navigate('ToAr', {screenProps: this.props.screenProps, story: story, index: 0})} />;
+    const dlbuttons = (story.isInstalled) ? [ { element: storyDelete }, { element: storyPlay }, { element: storyAr} ]: [ { element: storyInstall }];
+    const {navigate} = this.props.navigation;
     Reactotron.log('photo', photo);
     // if (!distance || this.state.Platform === 'web') {
     //   return (
@@ -249,17 +251,23 @@ export default class Story extends Component {
                   stylesheet={styles}
                 />
               </ScrollView>
+              {distance && (
+                <Text>You are at {distance} km from the beginning of your story.</Text>
+              )}
+              {story.isInstalled && (
+                <>
+                <Text style={styles.bold}> Please choose your mode of transportation and press Start Navigation.</Text>
+                <ButtonGroup
+                  onPress={this.updateTransportIndex}
+                  selectedIndex={transportIndex}
+                  buttons={transportbuttons}
+                  containerStyle={{height: 40}}
+                  disabled={[1, 2]}
+                  //disabled={true}
+                  />
+                </>
+              )}
 
-              {distance && (<Text>You are at {distance.toFixed(2)} km from the beginning of your story.</Text>)}
-              <Text style={styles.bold}> Please choose your mode of transportation and press Start Navigation.</Text>
-              <ButtonGroup
-                onPress={this.updateTransportIndex}
-                selectedIndex={transportIndex}
-                buttons={transportbuttons}
-                containerStyle={{height: 40}}
-                disabled={[1, 2]}
-                //disabled={true}
-                />
               <ButtonGroup
                 onPress={this.updateDlIndex}
                 selectedIndex={dlIndex}

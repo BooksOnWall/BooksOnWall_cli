@@ -52,5 +52,3 @@ var styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
-
-module.exports = HelloWorldSceneAR;

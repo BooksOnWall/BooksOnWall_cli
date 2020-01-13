@@ -9,6 +9,7 @@
 
 import React, { Component } from 'react';
 import {
+  Platform,
   AppRegistry,
   Text,
   View,
@@ -17,29 +18,41 @@ import {
   TouchableHighlight,
 } from 'react-native';
 
-import {
-  ViroARSceneNavigator
-} from 'react-viro';
-import InitialARScene from 'arScene';
+import { ViroARSceneNavigator} from 'react-viro';
+import InitialARScene from './arScene';
+import Sound from 'react-native-sound';
+
 /*
  TODO: Insert your API key below unneeded sin v.2.17
  */
-var sharedProps = {
+let sharedProps = {
   apiKey:"API_KEY_HERE",
 }
-var UNSET = "UNSET";
-var AR_NAVIGATOR_TYPE = "AR";
+let UNSET = "UNSET";
+let AR_NAVIGATOR_TYPE = "AR";
 
 // This determines which type of experience to launch in, or UNSET, if the user should
 // be presented with a choice of AR or VR. By default, we offer the user a choice.
-var defaultNavigatorType = AR;
+let defaultNavigatorType = "AR";
 
 export default class ToAR extends Component {
-  constructor() {
-    super();
-
+  constructor(props) {
+    super(props);
     this.state = {
       navigatorType : defaultNavigatorType,
+      server: this.props.screenProps.server,
+      appName: this.props.screenProps.appName,
+      appDir: this.props.screenProps.AppDir,
+      initialPosition: null,
+      lastPosition: null,
+      fromLat: null,
+      fromLong: null,
+      toLat: null ,
+      toLong: null,
+      distance: null,
+      story: this.props.navigation.getParam('story'),
+      index: this.props.navigation.getParam('index'),
+      stage: this.props.navigation.getParam('story').stages[this.props.navigation.getParam('index')],
       sharedProps : sharedProps
     }
     this._getExperienceSelector = this._getExperienceSelector.bind(this);
@@ -47,7 +60,84 @@ export default class ToAR extends Component {
     this._getExperienceButtonOnPress = this._getExperienceButtonOnPress.bind(this);
     this._exitViro = this._exitViro.bind(this);
   }
+  static navigationOptions = {
+    title: 'To Augmented Reality',
+    headerShown: false
+  };
+  componentDidMount = async () => {
+    try {
+      console.table(stage);
+      let audiofile = this.state.appDir+'/'+this.state.story.id+'/stages/onZoneEnter/'+this.state.stage.onZoneEnter[0].name;
+      console.log(audiofile);
+      let loop = this.state.stage.onZoneEnter[0].loop;
+      await this.loadAndPlayAudio(audiofile, loop);
+    } catch(e) {
+      console.log(e);
+    }
+  }
+  loadAndPlayAudio = async (audiofile, loop) => {
+    //@audiofile is stage path + filename
+    try {
+      // Enable playback in silence mode
+      Sound.setCategory('Playback');
 
+      // Load the sound file 'audio.mp3' from the app bundle
+      // See notes below about preloading sounds within initialization code below.
+      const audio = await new Sound(audiofile, Sound.MAIN_BUNDLE, (error) => {
+        if (error) {
+          console.log('failed to load the sound', error);
+          return;
+        }
+        // loaded successfully
+        console.log('duration in seconds: ' + audio.getDuration() + 'number of channels: ' + audio.getNumberOfChannels());
+
+        // Play the sound with an onEnd callback
+        audio.play((success) => {
+          if (success) {
+            // here as the audio is terminated we are ready for discover
+            console.log('successfully finished playing');
+          } else {
+            console.log('playback failed due to audio decoding errors');
+          }
+        });
+      });
+
+      // Reduce the volume by half
+      audio.setVolume(0.7);
+
+      // Position the sound to the full right in a stereo field
+      // audio.setPan(1);
+
+      // Loop indefinitely until stop() is called
+      if(loop) await audio.setNumberOfLoops(-1);
+
+      // Get properties of the player instance
+      console.log('volume: ' + audio.getVolume());
+      console.log('pan: ' + audio.getPan());
+      console.log('loops: ' + audio.getNumberOfLoops());
+
+      // // Seek to a specific point in seconds
+      // audio.setCurrentTime(2.5);
+      //
+      // // Get the current playback point in seconds
+      // audio.getCurrentTime((seconds) => console.log('at ' + seconds));
+      //
+      // // Pause the sound
+      // audio.pause();
+      //
+      // // Stop the sound and rewind to the beginning
+      // audio.stop(() => {
+      //   // Note: If you want to play a sound after stopping and rewinding it,
+      //   // it is important to call play() in a callback.
+      //   audio.play();
+      // });
+
+      // Release the audio player resource
+      audio.release();
+    } catch(e) {
+
+    }
+  }
   // Replace this function with the contents of _getVRNavigator() or _getARNavigator()
   // if you are building a specific type of experience.
   render() {
@@ -163,5 +253,3 @@ var localStyles = StyleSheet.create({
     borderColor: '#fff',
   }
 });
-
-module.exports = ToAr
