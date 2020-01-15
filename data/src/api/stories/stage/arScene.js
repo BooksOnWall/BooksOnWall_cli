@@ -87,18 +87,23 @@ export default class ArScene extends Component {
       for (let picture of pictures) {
         let path = picture.path;
         let radius = this.state.stage.radius;
-        let dimension = this.state.stage.dimension.split("x")[0].parseFloat().toFixed(2);
+        console.log('dimension:', this.state.stage.dimension);
+        let dimension = this.state.stage.dimension.split("x");
+        let width = dimension[0];
+        let height = dimension[1];
+        console.log('width:',width);
+        console.log('height:',height)
         path = path.replace("assets/stories", "");
         path = "file:///"+ this.state.appDir + path;
         console.log('image_path', path);
         console.log('appDir', this.state.appDir);
-        console.log('dimension', dimension);
+        //console.log('dimension', dimension);
 
         await ViroARTrackingTargets.createTargets({
           "targetOne" : {
             source : {uri:'file:///storage/emulated/0/Pictures/myImage.jpg'},
             orientation : "Up",
-            physicalWidth : dimension, // real world width in meters
+            physicalWidth : width, // real world width in meters
             type: 'Image'
           },
         });
