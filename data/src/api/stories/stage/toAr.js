@@ -55,10 +55,10 @@ export default class ToAR extends Component {
       sharedProps : sharedProps
     }
     console.table(this.state.stage);
-    this._getExperienceSelector = this._getExperienceSelector.bind(this);
-    this._getARNavigator = this._getARNavigator.bind(this);
-    this._getExperienceButtonOnPress = this._getExperienceButtonOnPress.bind(this);
-    this._exitViro = this._exitViro.bind(this);
+    // this.getExperienceSelector = this.getExperienceSelector.bind(this);
+    // this.getARNavigator = this.getARNavigator.bind(this);
+    // this.getExperienceButtonOnPress = this.getExperienceButtonOnPress.bind(this);
+    // this.exitViro = this.exitViro.bind(this);
   }
   static navigationOptions = {
     title: 'To Augmented Reality',
@@ -79,40 +79,6 @@ export default class ToAR extends Component {
   // Replace this function with the contents of _getVRNavigator() or _getARNavigator()
   // if you are building a specific type of experience.
   render() {
-
-    if (this.state.navigatorType == UNSET) {
-      return this.getExperienceSelector();
-    } else if (this.state.navigatorType == AR_NAVIGATOR_TYPE) {
-      return this.getARNavigator();
-    }
-  }
-  // Presents the user with a choice of an AR or VR experience
-  getExperienceSelector() {
-    return (
-      <View style={localStyles.outer} >
-        <View style={localStyles.inner} >
-          <Text style={localStyles.titleText}>
-            Choose your desired experience:
-          </Text>
-          <TouchableHighlight style={localStyles.buttons}
-            onPress={this.getExperienceButtonOnPress(AR_NAVIGATOR_TYPE)}
-            underlayColor={'#68a0ff'} >
-            <Text style={localStyles.buttonText}>AR</Text>
-          </TouchableHighlight>
-
-          <TouchableHighlight style={localStyles.buttons}
-            onPress={this.getExperienceButtonOnPress(VR_NAVIGATOR_TYPE)}
-            underlayColor={'#68a0ff'} >
-
-            <Text style={localStyles.buttonText}>VR</Text>
-          </TouchableHighlight>
-        </View>
-      </View>
-    );
-  }
-
-  // Returns the ViroARSceneNavigator which will start the AR experience
-  getARNavigator() {
     let params = {
       sharedProps: this.state.sharedProps,
       server: this.state.server,
@@ -128,24 +94,72 @@ export default class ToAR extends Component {
       <ViroARSceneNavigator viroAppProps={params}
         initialScene={{scene: InitialARScene}} />
     );
+    // if (this.state.navigatorType == UNSET) {
+    //   return this.getExperienceSelector();
+    // } else if (this.state.navigatorType == AR_NAVIGATOR_TYPE) {
+    //   return this.getARNavigator();
+    // }
   }
+  // Presents the user with a choice of an AR or VR experience
+  // getExperienceSelector() {
+  //   return (
+  //     <View style={localStyles.outer} >
+  //       <View style={localStyles.inner} >
+  //         <Text style={localStyles.titleText}>
+  //           Choose your desired experience:
+  //         </Text>
+  //         <TouchableHighlight style={localStyles.buttons}
+  //           onPress={this.getExperienceButtonOnPress(AR_NAVIGATOR_TYPE)}
+  //           underlayColor={'#68a0ff'} >
+  //           <Text style={localStyles.buttonText}>AR</Text>
+  //         </TouchableHighlight>
+  //
+  //         <TouchableHighlight style={localStyles.buttons}
+  //           onPress={this.getExperienceButtonOnPress(VR_NAVIGATOR_TYPE)}
+  //           underlayColor={'#68a0ff'} >
+  //
+  //           <Text style={localStyles.buttonText}>VR</Text>
+  //         </TouchableHighlight>
+  //       </View>
+  //     </View>
+  //   );
+  // }
+
+  // // Returns the ViroARSceneNavigator which will start the AR experience
+  // getARNavigator() {
+  //   let params = {
+  //     sharedProps: this.state.sharedProps,
+  //     server: this.state.server,
+  //     story: this.state.story,
+  //     index: this.state.index,
+  //     pictures: this.state.stage.pictures,
+  //     onZoneEnter: this.state.stage.onZoneEnter,
+  //     onZoneLeave: this.state.stage.onZoneLeave,
+  //     onPictureMatch: this.state.stage.onPictureMatch,
+  //     appDir: this.state.appDir
+  //   };
+  //   return (
+  //     <ViroARSceneNavigator viroAppProps={params}
+  //       initialScene={{scene: InitialARScene}} />
+  //   );
+  // }
 
   // This function returns an anonymous/lambda function to be used
   // by the experience selector buttons
-  getExperienceButtonOnPress(navigatorType) {
-    return () => {
-      this.setState({
-        navigatorType : navigatorType
-      })
-    }
-  }
+  // getExperienceButtonOnPress(navigatorType) {
+  //   return () => {
+  //     this.setState({
+  //       navigatorType : navigatorType
+  //     })
+  //   }
+  // }
 
   // This function "exits" Viro by setting the navigatorType to UNSET.
-  exitViro() {
-    this.setState({
-      navigatorType : UNSET
-    })
-  }
+  // exitViro() {
+  //   this.setState({
+  //     navigatorType : UNSET
+  //   })
+  // }
 }
 
 var localStyles = StyleSheet.create({

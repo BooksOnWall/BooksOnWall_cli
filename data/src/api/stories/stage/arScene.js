@@ -16,9 +16,9 @@ import {
 import KeepAwake from 'react-native-keep-awake';
 import Sound from 'react-native-sound';
 
-// import mural from '../assets/images/01mural.jpg';
-
-//import video from '../assets/video/small.3gp';
+// import mural from './storage/emulated/0/Android/data/com.booksonwall/BooksOnWall/8/stages/20/pictures/IMG_4868.jpg';
+//
+// import video from '../assets/video/small.3gp';
 // ViroARTrackingTargets.createTargets({
 //   "targetOne" : {
 //     source : mural,
@@ -72,25 +72,36 @@ export default class ArScene extends Component {
     }
   }
   componentWillUnmount = async () => KeepAwake.deactivate();
+  onInitialized(state, reason) {
+    if (state == ViroConstants.TRACKING_NORMAL) {
+      this.setState({
+        text : "Search for me ..."
+      });
+    } else if (state == ViroConstants.TRACKING_NONE) {
+      // Handle loss of tracking
+    }
+  }
   buildTrackingTargets = async () => {
     let pictures = this.state.pictures;
     try {
       for (let picture of pictures) {
         let path = picture.path;
         let radius = this.state.stage.radius;
-        let dimensions = this.state.stage.dimensions;
+        let dimension = this.state.stage.dimension.split("x")[0].parseFloat().toFixed(2);
         path = path.replace("assets/stories", "");
-        path = "."+ this.state.appDir + path;
+        path = "file:///"+ this.state.appDir + path;
         console.log('image_path', path);
         console.log('appDir', this.state.appDir);
-       //let image = require(path);
-        // await ViroARTrackingTargets.createTargets({
-        //   "targetOne" : {
-        //     source : require(path),
-        //     orientation : "Up",
-        //     physicalWidth : dimensions.split("x")[0] // real world width in meters
-        //   },
-        // });
+        console.log('dimension', dimension);
+
+        await ViroARTrackingTargets.createTargets({
+          "targetOne" : {
+            source : {uri:'file:///storage/emulated/0/Pictures/myImage.jpg'},
+            orientation : "Up",
+            physicalWidth : dimension, // real world width in meters
+            type: 'Image'
+          },
+        });
        }
     } catch(e) {
       console.log(e);
@@ -162,7 +173,7 @@ export default class ArScene extends Component {
   }
   render() {
     return (
-      <ViroARScene onTrackingUpdated={this._onInitialized}>
+      <ViroARScene onTrackingUpdated={this.onInitialized}>
         <ViroARImageMarker target={"targetOne"} >
             <ViroText text={this.state.text} width={2} height={2} position={[0, 0, -2]} style={styles.helloWorldTextStyle} />
         </ViroARImageMarker>
@@ -170,15 +181,7 @@ export default class ArScene extends Component {
     );
   }
 
-  onInitialized(state, reason) {
-    if (state == ViroConstants.TRACKING_NORMAL) {
-      this.setState({
-        text : "Search for me ..."
-      });
-    } else if (state == ViroConstants.TRACKING_NONE) {
-      // Handle loss of tracking
-    }
-  }
+
 }
 
 var styles = StyleSheet.create({
