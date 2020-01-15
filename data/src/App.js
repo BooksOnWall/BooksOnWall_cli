@@ -28,7 +28,7 @@ import RNAndroidLocationEnabler from 'react-native-android-location-enabler';
 import NetInfo from "@react-native-community/netinfo";
 import { Overlay } from 'react-native-elements';
 import { VIROAPI_KEY, MAPBOX_KEY, SERVER_URL, PROJECT_NAME  } from 'react-native-dotenv';
-
+import KeepAwake from 'react-native-keep-awake';
 
 const MainNavigator = createStackNavigator({
   Intro: { screen: Intro},
@@ -64,7 +64,9 @@ export default class App extends Component {
   }
   componentDidMount = async () => {
     try {
+
       if(Platform.OS !== 'web') {
+        await KeepAwake.activate();
         await this.handleLocales();
         //await this.networkCheck();
         await this.checkPermissions();
@@ -76,6 +78,7 @@ export default class App extends Component {
       console.warn(e);
     }
   }
+  componentWillUnmount = async () => KeepAwake.deactivate();
   requestWritePermission = async () => {
     try {
       await check(PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE)

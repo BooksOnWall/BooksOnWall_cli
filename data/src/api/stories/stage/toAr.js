@@ -20,14 +20,13 @@ import {
 
 import { ViroARSceneNavigator} from 'react-viro';
 import InitialARScene from './arScene';
-import Sound from 'react-native-sound';
-
+import KeepAwake from 'react-native-keep-awake';
 /*
  TODO: Insert your API key below unneeded sin v.2.17
  */
-let sharedProps = {
-  apiKey:"API_KEY_HERE",
-}
+ let sharedProps = {
+   apiKey:"API_KEY_HERE",
+ };
 let UNSET = "UNSET";
 let AR_NAVIGATOR_TYPE = "AR";
 
@@ -55,6 +54,7 @@ export default class ToAR extends Component {
       stage: this.props.navigation.getParam('story').stages[this.props.navigation.getParam('index')],
       sharedProps : sharedProps
     }
+    console.table(this.state.stage);
     this._getExperienceSelector = this._getExperienceSelector.bind(this);
     this._getARNavigator = this._getARNavigator.bind(this);
     this._getExperienceButtonOnPress = this._getExperienceButtonOnPress.bind(this);
@@ -64,92 +64,30 @@ export default class ToAR extends Component {
     title: 'To Augmented Reality',
     headerShown: false
   };
-  componentDidMount = async () => {
+  componentDidMount = async () => await KeepAwake.activate();
+  componentWillUnmount = async () => {
     try {
-      console.table(stage);
-      let audiofile = this.state.appDir+'/'+this.state.story.id+'/stages/onZoneEnter/'+this.state.stage.onZoneEnter[0].name;
-      console.log(audiofile);
-      let loop = this.state.stage.onZoneEnter[0].loop;
-      await this.loadAndPlayAudio(audiofile, loop);
+      await KeepAwake.deactivate();
+      this.setState({
+        navigatorType : UNSET
+      });
     } catch(e) {
       console.log(e);
     }
-  }
-  loadAndPlayAudio = async (audiofile, loop) => {
-    //@audiofile is stage path + filename
-    try {
-      // Enable playback in silence mode
-      Sound.setCategory('Playback');
 
-      // Load the sound file 'audio.mp3' from the app bundle
-      // See notes below about preloading sounds within initialization code below.
-      const audio = await new Sound(audiofile, Sound.MAIN_BUNDLE, (error) => {
-        if (error) {
-          console.log('failed to load the sound', error);
-          return;
-        }
-        // loaded successfully
-        console.log('duration in seconds: ' + audio.getDuration() + 'number of channels: ' + audio.getNumberOfChannels());
-
-        // Play the sound with an onEnd callback
-        audio.play((success) => {
-          if (success) {
-            // here as the audio is terminated we are ready for discover
-            console.log('successfully finished playing');
-          } else {
-            console.log('playback failed due to audio decoding errors');
-          }
-        });
-      });
-
-      // Reduce the volume by half
-      audio.setVolume(0.7);
-
-      // Position the sound to the full right in a stereo field
-      // audio.setPan(1);
-
-      // Loop indefinitely until stop() is called
-      if(loop) await audio.setNumberOfLoops(-1);
-
-      // Get properties of the player instance
-      console.log('volume: ' + audio.getVolume());
-      console.log('pan: ' + audio.getPan());
-      console.log('loops: ' + audio.getNumberOfLoops());
-
-      // // Seek to a specific point in seconds
-      // audio.setCurrentTime(2.5);
-      //
-      // // Get the current playback point in seconds
-      // audio.getCurrentTime((seconds) => console.log('at ' + seconds));
-      //
-      // // Pause the sound
-      // audio.pause();
-      //
-      // // Stop the sound and rewind to the beginning
-      // audio.stop(() => {
-      //   // Note: If you want to play a sound after stopping and rewinding it,
-      //   // it is important to call play() in a callback.
-      //   audio.play();
-      // });
-
-      // Release the audio player resource
-      audio.release();
-    } catch(e) {
-
-    }
   }
   // Replace this function with the contents of _getVRNavigator() or _getARNavigator()
   // if you are building a specific type of experience.
   render() {
+
     if (this.state.navigatorType == UNSET) {
-      return this._getExperienceSelector();
+      return this.getExperienceSelector();
     } else if (this.state.navigatorType == AR_NAVIGATOR_TYPE) {
-      return this._getARNavigator();
+      return this.getARNavigator();
     }
   }
-
   // Presents the user with a choice of an AR or VR experience
-  _getExperienceSelector() {
+  getExperienceSelector() {
     return (
       <View style={localStyles.outer} >
         <View style={localStyles.inner} >
@@ -157,13 +95,13 @@ export default class ToAR extends Component {
             Choose your desired experience:
           </Text>
           <TouchableHighlight style={localStyles.buttons}
-            onPress={this._getExperienceButtonOnPress(AR_NAVIGATOR_TYPE)}
+            onPress={this.getExperienceButtonOnPress(AR_NAVIGATOR_TYPE)}
             underlayColor={'#68a0ff'} >
             <Text style={localStyles.buttonText}>AR</Text>
           </TouchableHighlight>
 
           <TouchableHighlight style={localStyles.buttons}
-            onPress={this._getExperienceButtonOnPress(VR_NAVIGATOR_TYPE)}
+            onPress={this.getExperienceButtonOnPress(VR_NAVIGATOR_TYPE)}
             underlayColor={'#68a0ff'} >
 
             <Text style={localStyles.buttonText}>VR</Text>
@@ -174,16 +112,27 @@ export default class ToAR extends Component {
   }
 
   // Returns the ViroARSceneNavigator which will start the AR experience
-  _getARNavigator() {
+  getARNavigator() {
+    let params = {
+      sharedProps: this.state.sharedProps,
+      server: this.state.server,
+      story: this.state.story,
+      index: this.state.index,
+      pictures: this.state.stage.pictures,
+      onZoneEnter: this.state.stage.onZoneEnter,
+      onZoneLeave: this.state.stage.onZoneLeave,
+      onPictureMatch: this.state.stage.onPictureMatch,
+      appDir: this.state.appDir
+    };
     return (
-      <ViroARSceneNavigator {...this.state.sharedProps}
+      <ViroARSceneNavigator viroAppProps={params}
         initialScene={{scene: InitialARScene}} />
     );
   }
 
   // This function returns an anonymous/lambda function to be used
   // by the experience selector buttons
-  _getExperienceButtonOnPress(navigatorType) {
+  getExperienceButtonOnPress(navigatorType) {
     return () => {
       this.setState({
         navigatorType : navigatorType
@@ -192,7 +141,7 @@ export default class ToAR extends Component {
   }
 
   // This function "exits" Viro by setting the navigatorType to UNSET.
-  _exitViro() {
+  exitViro() {
     this.setState({
       navigatorType : UNSET
     })

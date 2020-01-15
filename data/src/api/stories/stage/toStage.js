@@ -22,6 +22,7 @@ import Geolocation from '@react-native-community/geolocation';
 import { MAPBOX_KEY  } from 'react-native-dotenv';
 import { Card, ButtonGroup, Button, ThemeProvider } from 'react-native-elements';
 import  distance from '@turf/distance';
+import KeepAwake from 'react-native-keep-awake';
 import Reactotron from 'reactotron-react-native';
 type Props = {};
 
@@ -44,12 +45,9 @@ export default class ToStage extends Component<Props,$FlowFixMeState > {
 
     this.updateIndex = this.updateIndex.bind(this)
   }
-  updateIndex = (selectedIndex) => {
-    this.setState({selectedIndex})
-  }
-  watchID: ?number = null;
   componentDidMount = async () => {
     try {
+      await KeepAwake.activate();
       if (!this.state.granted) {
         await this.requestFineLocationPermission();
       }
@@ -61,7 +59,7 @@ export default class ToStage extends Component<Props,$FlowFixMeState > {
           this.setState({initialPosition});
         },
         error => Alert.alert('Error', JSON.stringify(error)),
-        {enableHighAccuracy: true, timeout: 2000, maximumAge: 1000},
+        {enableHighAccuracy: true, timeout: 10000, maximumAge: 1000},
       );
       this.watchID = await Geolocation.watchPosition(position => {
         const lastPosition = position;
@@ -91,17 +89,26 @@ export default class ToStage extends Component<Props,$FlowFixMeState > {
           };
       },
       error => Alert.alert('Error', JSON.stringify(error)),
-      {timeout: 2000, maximumAge: 1000, enableHighAccuracy: true, distanceFilter: 1},
+      {timeout: 5000, maximumAge: 1000, enableHighAccuracy: true, distanceFilter: 1},
       );
 
     } catch(e) {
       console.log(e);
     }
   }
-  componentWillUnmount() {
-   this.watchID != null && Geolocation.clearWatch(this.watchID);
+  componentWillUnmount = async () => {
+    try {
+      await this.watchID != null && Geolocation.clearWatch(this.watchID);
+      await KeepAwake.deactivate();
+    } catch(e) {
+      console.log(e);
+    }
   }
-  async requestFineLocationPermission() {
+  updateIndex = (selectedIndex) => {
+    this.setState({selectedIndex})
+  }
+  watchID: ?number = null;
+  requestFineLocationPermission = async () => {
     try {
       const granted = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,

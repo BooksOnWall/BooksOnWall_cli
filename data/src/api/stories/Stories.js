@@ -8,6 +8,7 @@ import  distance from '@turf/distance';
 import * as RNFS from 'react-native-fs';
 import Reactotron from 'reactotron-react-native';
 import Sound from 'react-native-sound';
+import KeepAwake from 'react-native-keep-awake';
 
 function humanFileSize(bytes, si) {
     var thresh = si ? 1000 : 1024;
@@ -53,6 +54,16 @@ export default class Stories extends Component {
     this.getCurrentLocation = this.getCurrentLocation.bind(this);
     this.storiesCheck = this.storiesCheck.bind(this);
   }
+  componentDidMount = async () => {
+    try {
+      await KeepAwake.activate();
+      await this.getCurrentLocation();
+      await this.storiesCheck();
+    } catch(e) {
+      console.log(e);
+    }
+  }
+  componentWillUnmount = async () => KeepAwake.deactivate();
   watchID: ?number = null;
 
   getCurrentLocation = async () => {
@@ -122,14 +133,6 @@ export default class Stories extends Component {
         .then( (exists) => {
             return exists;
         });
-    } catch(e) {
-      console.log(e);
-    }
-  }
-  componentDidMount = async () => {
-    try {
-      await this.getCurrentLocation();
-      await this.storiesCheck();
     } catch(e) {
       console.log(e);
     }

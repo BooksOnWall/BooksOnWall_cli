@@ -1,6 +1,6 @@
 import React, {Component} from 'react';
 import SafeAreaView from 'react-native-safe-area-view';
-import { Alert, Platform, ActivityIndicator, ScrollView, Animated, Image, StyleSheet, View, Text, I18nManager } from 'react-native';
+import { PermissionsAndroid, Alert, Platform, ActivityIndicator, ScrollView, Animated, Image, StyleSheet, View, Text, I18nManager } from 'react-native';
 import { Header,Card, ListItem, ButtonGroup, Button, Icon, ThemeProvider } from 'react-native-elements';
 import Geolocation from '@react-native-community/geolocation';
 import { MAPBOX_KEY  } from 'react-native-dotenv';
@@ -9,6 +9,7 @@ import HTMLView from 'react-native-htmlview';
 import RNFetchBlob from 'rn-fetch-blob';
 import * as RNFS from 'react-native-fs';
 import Reactotron from 'reactotron-react-native';
+import KeepAwake from 'react-native-keep-awake';
 
 function humanFileSize(bytes, si) {
     var thresh = si ? 1000 : 1024;
@@ -57,6 +58,20 @@ export default class Story extends Component {
     this.updateDlIndex = this.updateDlIndex.bind(this);
     this.getCurrentLocation = this.getCurrentLocation.bind(this);
   }
+  componentDidMount = async () => {
+
+    if (!this.props.navigation.getParam('story') ) this.props.navigation.navigate('Stories');
+    try {
+      await KeepAwake.activate();
+      if (!this.state.granted) {
+        await this.requestFineLocationPermission();
+      }
+      await this.getCurrentLocation();
+    } catch(e) {
+      console.log(e);
+    }
+  }
+  componentWillUnmount = async () => await KeepAwake.deactivate();
   updateTransportIndex = (transportIndex) => this.setState({transportIndex})
   updateDlIndex = (dlIndex) => this.setState({dlIndex})
   watchID: ?number = null;
@@ -126,7 +141,7 @@ export default class Story extends Component {
           this.setState({initialPosition});
         },
         error => Alert.alert('Error', JSON.stringify(error)),
-        { timeout: 2000, maximumAge: 1000, enableHighAccuracy: true},
+        { timeout: 10000, maximumAge: 1000, enableHighAccuracy: true},
       );
       this.watchID = await Geolocation.watchPosition(position => {
         const lastPosition = position;
@@ -156,7 +171,7 @@ export default class Story extends Component {
           };
       },
       error => Alert.alert('Error', JSON.stringify(error)),
-      {timeout: 2000, maximumAge: 1000, enableHighAccuracy: true, distanceFilter: 1},
+      {timeout: 5000, maximumAge: 1000, enableHighAccuracy: true, distanceFilter: 1},
       );
     } catch(e) {
       console.log(e);
@@ -180,17 +195,7 @@ export default class Story extends Component {
       console.warn(err);
     }
   }
-  componentDidMount = async () => {
-    if (!this.props.navigation.getParam('story') ) this.props.navigation.navigate('Stories');
-    try {
-      if (!this.state.granted) {
-        await this.requestFineLocationPermission();
-      }
-      await this.getCurrentLocation();
-    } catch(e) {
-      console.log(e);
-    }
-  }
+
   launchStory = () => this.props.navigation.navigate('ToStage', {'story': this.state.story, 'position': 1, state: this.state })
   deleteStory = async (sid) => {
     try {
