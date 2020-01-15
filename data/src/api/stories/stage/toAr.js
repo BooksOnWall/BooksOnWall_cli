@@ -6,8 +6,7 @@
  * LICENSE file in the root directory of this source tree. An additional grant
  * of patent rights can be found in the PATENTS file in the same directory.
  */
-
-import React, { Component } from 'react';
+import React, { PureComponent } from 'react';
 import {
   Platform,
   AppRegistry,
@@ -24,9 +23,9 @@ import KeepAwake from 'react-native-keep-awake';
 /*
  TODO: Insert your API key below unneeded sin v.2.17
  */
- let sharedProps = {
-   apiKey:"API_KEY_HERE",
- };
+let sharedProps = {
+  apiKey:"API_KEY_HERE",
+};
 let UNSET = "UNSET";
 let AR_NAVIGATOR_TYPE = "AR";
 
@@ -34,7 +33,7 @@ let AR_NAVIGATOR_TYPE = "AR";
 // be presented with a choice of AR or VR. By default, we offer the user a choice.
 let defaultNavigatorType = "AR";
 
-export default class ToAR extends Component {
+export default class ToAR extends PureComponent {
   constructor(props) {
     super(props);
     this.state = {
@@ -91,6 +90,7 @@ export default class ToAR extends Component {
       appDir: this.state.appDir
     };
     return (
+      //shadowsEnabled={true} bloomEnabled={true} hdrEnabled={true}
       <ViroARSceneNavigator viroAppProps={params}
         initialScene={{scene: InitialARScene}} />
     );
