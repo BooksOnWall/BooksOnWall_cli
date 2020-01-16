@@ -9,6 +9,9 @@
 
 [react-vivo-cli](https://docs.viromedia.com/docs)
 [rninit](http://)
+
+[jq](https://stedolan.github.io/jq/)
+
 ## Set your nodejs environement 
 
 
