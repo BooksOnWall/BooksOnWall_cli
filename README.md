@@ -45,10 +45,12 @@ export ANDROID_HOME=/YOUR_PATH_TO/Android/sdk
 export PATH=$ANDROID_HOME/platform-tools:$PATH
 export PATH=$ANDROID_HOME/tools:$PATH
 ```
-Build and launch android app by executing the following from the root of the project
+Once your application installed and builded, launch android app by executing the following from the root of the project
 ```
 react-native run-android --variant=gvrDebug
 ```
+More info in this other project : 
+[BooksOnWall](https://git.pulsar113.org/BooksOnWall/BooksOnWall)
 
 For iOS, in Xcode open ViroSample.xcworkspace in ios/ directory. Select the right "Team" for yout app and the app name target under General -> Signing Hit play to build and launch the app on your iOS device
 
