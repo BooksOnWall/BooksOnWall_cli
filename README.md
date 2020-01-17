@@ -8,7 +8,8 @@
 [react-native-cli](https://github.com/react-native-community/cli)
 
 [react-vivo-cli](https://docs.viromedia.com/docs)
-[rninit](http://)
+
+[rninit](https://github.com/jacobbubu/rninit)
 
 [jq](https://stedolan.github.io/jq/)
 
