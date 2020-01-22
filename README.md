@@ -114,3 +114,6 @@ This will create a directory and application android and ios named BooksOnWall u
 
 For **Troubleshootings** please see [that page](../../wiki/Troubleshootings) 
 or contact us via github or telegram on the chan BooksOnWall DEV
+
+As this project is intended to assemble and prepare a dedicated git managed project 
+you should [read this page](../../wiki/Merge+BooksOnWall) for merging purpose
