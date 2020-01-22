@@ -1,9 +1,9 @@
 'use strict';
 
-import React, { PureComponent } from 'react';
+import React, { Component } from 'react';
 
-import {StyleSheet} from 'react-native';
-
+import {View, Button, Text,StyleSheet, TouchableHighlight} from 'react-native';
+//import { Button, Icon } from 'react-native-elements';
 import {
   ViroConstants,
   ViroARScene,
@@ -17,42 +17,23 @@ import {
 import KeepAwake from 'react-native-keep-awake';
 import Sound from 'react-native-sound';
 
-// import mural from './storage/emulated/0/Android/data/com.booksonwall/BooksOnWall/8/stages/20/pictures/IMG_4868.jpg';
-//
-// import video from '../assets/video/small.3gp';
-// ViroARTrackingTargets.createTargets({
-//   "targetOne" : {
-//     source : mural,
-//     orientation : "Up",
-//     physicalWidth : 0.1 // real world width in meters
-//   },
-// });
-
-export default class ArScene extends PureComponent {
+export default class ArScene extends Component {
   constructor(props) {
     super(props);
     let params = this.props.sceneNavigator.viroAppProps;
     // Set initial state here
     this.state = {
-      text : "Start BooksOnWall AR ...",
-      text2 : "Mural detected ...",
+      text : "You Found me ...",
       server: params.server,
       appName: params.appName,
       appDir: params.appDir,
-      initialPosition: null,
-      lastPosition: null,
-      fromLat: null,
-      fromLong: null,
-      toLat: null ,
-      toLong: null,
-      distance: null,
       story: params.story,
       index: params.index,
       stage: params.story.stages[params.index],
       pictures: params.pictures,
-      picturePath: null,
-      audioPath: null,
-      videoPath: null,
+      picturePath: "",
+      audioPath: "",
+      videoPath: "",
       onZoneEnter: params.onZoneEnter,
       onZoneLeave: params.onZoneLeave,
       onPictureMatch: params.onPictureMatch
@@ -88,25 +69,18 @@ export default class ArScene extends PureComponent {
     }
   }
   buildTrackingTargets = async () => {
-    let pictures = this.state.pictures;
     try {
       //for (let picture of pictures) {
         //let path = picture.path;
+        let pictures = this.state.pictures;
         let path = pictures[0].path;
         let radius = this.state.stage.radius;
-        console.log('dimension:', this.state.stage.dimension);
         let dimension = this.state.stage.dimension.split("x");
         let width = parseFloat(dimension[0]);
         let height = parseFloat(dimension[1]);
-        console.log('width:',width);
-        console.log('height:',height)
         path = path.replace("assets/stories", "");
         path = "file:///"+ this.state.appDir + path;
         this.setState({picturePath: path});
-        console.log('image_path', path);
-        console.log('appDir', this.state.appDir);
-        //console.log('dimension', dimension);
-
         await ViroARTrackingTargets.createTargets({
           "targetOne" : {
             source : { uri: path },
@@ -207,18 +181,20 @@ export default class ArScene extends PureComponent {
 
     }
   }
+  toPath = (radius) => {
+      console.log('radius', radius);
+  }
   render() {
     return (
       <ViroARScene onTrackingUpdated={this.onInitialized}>
-        <ViroImage
-          height={2}
-          width={2}
-          placeholderSource={{uri: "./res/local_spinner.jpg"}}
-          source={{uri: this.state.picturePath}}
-        />
         <ViroARImageMarker target={"targetOne"} >
-            <ViroText text={this.state.text} width={2} height={2} position={[0, 0, -2]} style={styles.helloWorldTextStyle} />
-            {this.buildVideoComponent()}
+            <ViroText
+              text={this.state.text}
+              width={3}
+              height={3}
+              position={[0, 0, -2]}
+              style={ styles.helloWorldTextStyle }
+              />
         </ViroARImageMarker>
       </ViroARScene>
     );
