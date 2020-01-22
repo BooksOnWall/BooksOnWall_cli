@@ -1,9 +1,9 @@
 'use strict';
 
-import React, { PureComponent } from 'react';
+import React, { Component } from 'react';
 
-import {StyleSheet} from 'react-native';
-
+import {SafeAreaView,ActivityIndicator, Button, Text,StyleSheet, TouchableHighlight} from 'react-native';
+//import { Button, Icon } from 'react-native-elements';
 import {
   ViroConstants,
   ViroARScene,
@@ -17,58 +17,40 @@ import {
 import KeepAwake from 'react-native-keep-awake';
 import Sound from 'react-native-sound';
 
-// import mural from './storage/emulated/0/Android/data/com.booksonwall/BooksOnWall/8/stages/20/pictures/IMG_4868.jpg';
-//
-// import video from '../assets/video/small.3gp';
-// ViroARTrackingTargets.createTargets({
-//   "targetOne" : {
-//     source : mural,
-//     orientation : "Up",
-//     physicalWidth : 0.1 // real world width in meters
-//   },
-// });
-
-export default class ArScene extends PureComponent {
+export default class ArScene extends Component {
   constructor(props) {
     super(props);
     let params = this.props.sceneNavigator.viroAppProps;
     // Set initial state here
     this.state = {
-      text : "Start BooksOnWall AR ...",
-      text2 : "Mural detected ...",
+      text : "You Found me ...",
       server: params.server,
       appName: params.appName,
       appDir: params.appDir,
-      initialPosition: null,
-      lastPosition: null,
-      fromLat: null,
-      fromLong: null,
-      toLat: null ,
-      toLong: null,
-      distance: null,
       story: params.story,
       index: params.index,
       stage: params.story.stages[params.index],
       pictures: params.pictures,
-      picturePath: null,
-      audioPath: null,
-      videoPath: null,
+      picturePath: "",
+      audioPath: "",
+      videoPath: "",
       onZoneEnter: params.onZoneEnter,
       onZoneLeave: params.onZoneLeave,
       onPictureMatch: params.onPictureMatch
     };
-    console.table(this.state.pictures);
-    console.log(params.appDir);
+    // console.table(this.state.pictures);
+    // console.log(params.appDir);
     // bind 'this' to functions
     this.onInitialized = this.onInitialized.bind(this);
     this.buildTrackingTargets = this.buildTrackingTargets.bind(this);
-    this.buildVideoComponent = this.buildVideoComponent.bind(this);
+    this.setVideoComponent = this.setVideoComponent.bind(this);
     this.loadAndPlayAudio = this.loadAndPlayAudio.bind(this);
   }
   componentDidMount = async () => {
     try {
       await KeepAwake.activate();
       await this.loadAndPlayAudio();
+      await this.setVideoComponent();
       await this.buildTrackingTargets();
     } catch(e) {
       console.log(e);
@@ -88,25 +70,17 @@ export default class ArScene extends PureComponent {
     }
   }
   buildTrackingTargets = async () => {
-    let pictures = this.state.pictures;
     try {
+      let pictures = this.state.pictures;
       //for (let picture of pictures) {
         //let path = picture.path;
         let path = pictures[0].path;
         let radius = this.state.stage.radius;
-        console.log('dimension:', this.state.stage.dimension);
         let dimension = this.state.stage.dimension.split("x");
         let width = parseFloat(dimension[0]);
         let height = parseFloat(dimension[1]);
-        console.log('width:',width);
-        console.log('height:',height)
-        path = path.replace("assets/stories", "");
-        path = "file:///"+ this.state.appDir + path;
-        this.setState({picturePath: path});
-        console.log('image_path', path);
-        console.log('appDir', this.state.appDir);
-        //console.log('dimension', dimension);
-
+        path = this.state.appDir + path.replace("assets/stories", "");
+        //this.setState({picturePath: path});
         await ViroARTrackingTargets.createTargets({
           "targetOne" : {
             source : { uri: path },
@@ -120,29 +94,18 @@ export default class ArScene extends PureComponent {
       console.log(e);
     }
   }
-  buildVideoComponent = () => {
-    let path = this.state.stage.onPictureMatch[0].path.replace(" ", "\ ");
-    path = path.replace("assets/stories", "");
-    path = "file:///"+ this.state.appDir + path;
-    this.setState({videoPath: path});
-    console.table(path);
-    return (
-      <ViroVideo
-        source={{ uri: path }}
-        loop={false}
-        position={[0,2,-5]}
-        scale={[2, 2, 0]}
-     />
-    );
+  setVideoComponent = () => {
+    let path = this.state.stage.onPictureMatch[0].path;
+    path = this.state.appDir + path.replace("assets/stories", "");;
+    console.log(path);
+    this.setState({'videoPath': path});
   }
   loadAndPlayAudio = async () => {
     //@audiofile is stage path + filename
+    console.log('loadAndPlayAudio');
     try {
       let path = this.state.stage.onZoneEnter[0].path;
-      path = path.replace("assets/stories", "");
-      path = "/stages/20/onZoneEnter/5-4.3_loop.mp3";
-      console;log(path);
-      path = "file:///"+ this.state.appDir + path;
+      path = this.state.appDir + path.replace("assets/stories", "");;
       this.setState({audioPath: path});
       console.log('audio_path', path);
       let loop = this.state.stage.onZoneEnter[0].loop;
@@ -159,7 +122,14 @@ export default class ArScene extends PureComponent {
         }
         // loaded successfully
         console.log('duration in seconds: ' + audio.getDuration() + 'number of channels: ' + audio.getNumberOfChannels());
+        // Reduce the volume by half
+        audio.setVolume(0.7);
 
+        // Position the sound to the full right in a stereo field
+        // audio.setPan(1);
+
+        // Loop indefinitely until stop() is called
+        if(loop) audio.setNumberOfLoops(-1);
         // Play the sound with an onEnd callback
         audio.play((success) => {
           if (success) {
@@ -171,14 +141,7 @@ export default class ArScene extends PureComponent {
         });
       });
 
-      // Reduce the volume by half
-      audio.setVolume(0.7);
 
-      // Position the sound to the full right in a stereo field
-      // audio.setPan(1);
-
-      // Loop indefinitely until stop() is called
-      if(loop) await audio.setNumberOfLoops(-1);
 
       // Get properties of the player instance
       console.log('volume: ' + audio.getVolume());
@@ -204,21 +167,30 @@ export default class ArScene extends PureComponent {
       // Release the audio player resource
       //audio.release();
     } catch(e) {
-
+      console.log(e);
     }
   }
-  render() {
+  toPath = (radius) => {
+      console.log('radius', radius);
+  }
+  render = () => {
+    if (!this.state.videoPath && this.state.videoPath === "") {
+      return (
+          <SafeAreaView style={styles.container}>
+            <ActivityIndicator size="large" color="#0000ff" />
+          </SafeAreaView>
+      );
+    }
     return (
       <ViroARScene onTrackingUpdated={this.onInitialized}>
-        <ViroImage
-          height={2}
-          width={2}
-          placeholderSource={{uri: "./res/local_spinner.jpg"}}
-          source={{uri: this.state.picturePath}}
-        />
         <ViroARImageMarker target={"targetOne"} >
-            <ViroText text={this.state.text} width={2} height={2} position={[0, 0, -2]} style={styles.helloWorldTextStyle} />
-            {this.buildVideoComponent()}
+            <ViroVideo
+              source={require(this.state.videoPath)}
+              height={3}
+              width={3}
+              loop={false}
+              position={[0,2,-5]}
+            />
         </ViroARImageMarker>
       </ViroARScene>
     );
