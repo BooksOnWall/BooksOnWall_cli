@@ -57,7 +57,7 @@ For iOS, in Xcode open ViroSample.xcworkspace in ios/ directory. Select the righ
 ## gradle install for android
 multiple installation options :
 [Documentation](https://gradle.org/install/)
-we canot go to the ultimate 6.0.1 version , intended for android X , multiple react-native package are not ready for it , commencing by react-viro that impose react-native 59.9 ultimate step before the 60.x version that is mandatory for Android X
+we canot go to the ultimate 6.0.1 version , intended for android X , multiple react-native package are not ready for it , starting by react-viro that impose react-native 59.9 ultimate step before the 60.x version that is mandatory for Android X
 We are targeting gradle version 5.4.1
 
 ### Install with package manager
