@@ -8,7 +8,11 @@
 [react-native-cli](https://github.com/react-native-community/cli)
 
 [react-vivo-cli](https://docs.viromedia.com/docs)
-[rninit](http://)
+
+[rninit](https://github.com/jacobbubu/rninit)
+
+[jq](https://stedolan.github.io/jq/)
+
 ## Set your nodejs environement 
 
 
@@ -41,17 +45,19 @@ export ANDROID_HOME=/YOUR_PATH_TO/Android/sdk
 export PATH=$ANDROID_HOME/platform-tools:$PATH
 export PATH=$ANDROID_HOME/tools:$PATH
 ```
-Build and launch android app by executing the following from the root of the project
+Once your application installed and builded, launch android app by executing the following from the root of the project
 ```
 react-native run-android --variant=gvrDebug
 ```
+More info in this other project : 
+[BooksOnWall](https://git.pulsar113.org/BooksOnWall/BooksOnWall)
 
 For iOS, in Xcode open ViroSample.xcworkspace in ios/ directory. Select the right "Team" for yout app and the app name target under General -> Signing Hit play to build and launch the app on your iOS device
 
 ## gradle install for android
 multiple installation options :
 [Documentation](https://gradle.org/install/)
-we canot go to the ultimate 6.0.1 version , intended for android X , multiple react-native package are not ready for it , commencing by react-viro that impose react-native 59.9 ultimate step before the 60.x version that is mandatory for Android X
+we canot go to the ultimate 6.0.1 version , intended for android X , multiple react-native package are not ready for it , starting by react-viro that impose react-native 59.9 ultimate step before the 60.x version that is mandatory for Android X
 We are targeting gradle version 5.4.1
 
 ### Install with package manager
@@ -105,3 +111,9 @@ $ ./react-bow init  BooksOnWall https://api.booksonwall.art
 
 ```
 This will create a directory and application android and ios named BooksOnWall using the api https://api.booksonwall.art
+
+For **Troubleshootings** please see [that page](../../wiki/Troubleshootings) 
+or contact us via github or telegram on the chan BooksOnWall DEV
+
+As this project is intended to assemble and prepare a dedicated git managed project 
+you should [read this page](../../wiki/Merge+BooksOnWall) for merging purpose

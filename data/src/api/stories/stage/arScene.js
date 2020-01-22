@@ -74,6 +74,7 @@ export default class ArScene extends Component {
       let pictures = this.state.pictures;
       //for (let picture of pictures) {
         //let path = picture.path;
+        let pictures = this.state.pictures;
         let path = pictures[0].path;
         let radius = this.state.stage.radius;
         let dimension = this.state.stage.dimension.split("x");
@@ -174,7 +175,7 @@ export default class ArScene extends Component {
       console.log('radius', radius);
   }
   render = () => {
-    if (!this.state.videoPath && this.state.videoPath === "") {
+    if (!this.state.videoPath || this.state.videoPath === "") {
       return (
           <SafeAreaView style={styles.container}>
             <ActivityIndicator size="large" color="#0000ff" />

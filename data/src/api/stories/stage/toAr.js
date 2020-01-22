@@ -21,7 +21,7 @@ import { ViroARSceneNavigator} from 'react-viro';
 import InitialARScene from './arScene';
 import KeepAwake from 'react-native-keep-awake';
 /*
- TODO: Insert your API key below unneeded sin v.2.17
+ TODO: Insert your API key below unneeded since v.2.17
  */
 let sharedProps = {
   apiKey:"API_KEY_HERE",
@@ -41,23 +41,12 @@ export default class ToAR extends PureComponent {
       server: this.props.screenProps.server,
       appName: this.props.screenProps.appName,
       appDir: this.props.screenProps.AppDir,
-      initialPosition: null,
-      lastPosition: null,
-      fromLat: null,
-      fromLong: null,
-      toLat: null ,
-      toLong: null,
-      distance: null,
       story: this.props.navigation.getParam('story'),
       index: this.props.navigation.getParam('index'),
       stage: this.props.navigation.getParam('story').stages[this.props.navigation.getParam('index')],
       sharedProps : sharedProps
     }
     console.table(this.state.stage);
-    // this.getExperienceSelector = this.getExperienceSelector.bind(this);
-    // this.getARNavigator = this.getARNavigator.bind(this);
-    // this.getExperienceButtonOnPress = this.getExperienceButtonOnPress.bind(this);
-    // this.exitViro = this.exitViro.bind(this);
   }
   static navigationOptions = {
     title: 'To Augmented Reality',
@@ -67,9 +56,7 @@ export default class ToAR extends PureComponent {
   componentWillUnmount = async () => {
     try {
       await KeepAwake.deactivate();
-      this.setState({
-        navigatorType : UNSET
-      });
+      this.setState({ navigatorType : UNSET });
     } catch(e) {
       console.log(e);
     }
@@ -90,76 +77,11 @@ export default class ToAR extends PureComponent {
       appDir: this.state.appDir
     };
     return (
-      //shadowsEnabled={true} bloomEnabled={true} hdrEnabled={true}
-      <ViroARSceneNavigator viroAppProps={params}
-        initialScene={{scene: InitialARScene}} />
+      // options shadowsEnabled={true} bloomEnabled={true} hdrEnabled={true} bugged on my LG Q6
+      // ref={(component) => {this.nav = component}} do we need ref ?
+      <ViroARSceneNavigator  {...this.state.sharedProps} viroAppProps={params} initialScene={{ scene: InitialARScene }} />
     );
-    // if (this.state.navigatorType == UNSET) {
-    //   return this.getExperienceSelector();
-    // } else if (this.state.navigatorType == AR_NAVIGATOR_TYPE) {
-    //   return this.getARNavigator();
-    // }
   }
-  // Presents the user with a choice of an AR or VR experience
-  // getExperienceSelector() {
-  //   return (
-  //     <View style={localStyles.outer} >
-  //       <View style={localStyles.inner} >
-  //         <Text style={localStyles.titleText}>
-  //           Choose your desired experience:
-  //         </Text>
-  //         <TouchableHighlight style={localStyles.buttons}
-  //           onPress={this.getExperienceButtonOnPress(AR_NAVIGATOR_TYPE)}
-  //           underlayColor={'#68a0ff'} >
-  //           <Text style={localStyles.buttonText}>AR</Text>
-  //         </TouchableHighlight>
-  //
-  //         <TouchableHighlight style={localStyles.buttons}
-  //           onPress={this.getExperienceButtonOnPress(VR_NAVIGATOR_TYPE)}
-  //           underlayColor={'#68a0ff'} >
-  //
-  //           <Text style={localStyles.buttonText}>VR</Text>
-  //         </TouchableHighlight>
-  //       </View>
-  //     </View>
-  //   );
-  // }
-
-  // // Returns the ViroARSceneNavigator which will start the AR experience
-  // getARNavigator() {
-  //   let params = {
-  //     sharedProps: this.state.sharedProps,
-  //     server: this.state.server,
-  //     story: this.state.story,
-  //     index: this.state.index,
-  //     pictures: this.state.stage.pictures,
-  //     onZoneEnter: this.state.stage.onZoneEnter,
-  //     onZoneLeave: this.state.stage.onZoneLeave,
-  //     onPictureMatch: this.state.stage.onPictureMatch,
-  //     appDir: this.state.appDir
-  //   };
-  //   return (
-  //     <ViroARSceneNavigator viroAppProps={params}
-  //       initialScene={{scene: InitialARScene}} />
-  //   );
-  // }
-
-  // This function returns an anonymous/lambda function to be used
-  // by the experience selector buttons
-  // getExperienceButtonOnPress(navigatorType) {
-  //   return () => {
-  //     this.setState({
-  //       navigatorType : navigatorType
-  //     })
-  //   }
-  // }
-
-  // This function "exits" Viro by setting the navigatorType to UNSET.
-  // exitViro() {
-  //   this.setState({
-  //     navigatorType : UNSET
-  //   })
-  // }
 }
 
 var localStyles = StyleSheet.create({
