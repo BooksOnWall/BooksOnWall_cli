@@ -111,3 +111,5 @@ $ ./react-bow init  BooksOnWall https://api.booksonwall.art
 
 ```
 This will create a directory and application android and ios named BooksOnWall using the api https://api.booksonwall.art
+
+For **Troubleshootings** please see [that page](/wiki/Troubleshootings) or contact us via github or telegram on the chan BooksOnWall DEV
