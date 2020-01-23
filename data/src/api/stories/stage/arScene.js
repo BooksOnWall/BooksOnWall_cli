@@ -76,13 +76,12 @@ export default class ArScene extends Component {
       let pictures = this.state.pictures;
       //for (let picture of pictures) {
         //let path = picture.path;
-        let pictures = this.state.pictures;
         let path = pictures[0].path;
         let radius = this.state.stage.radius;
         let dimension = this.state.stage.dimension.split("x");
         let width = parseFloat(dimension[0]);
         let height = parseFloat(dimension[1]);
-        path = this.state.appDir + path.replace("assets/stories", "");
+        path = 'file://' + this.state.appDir + path.replace("assets/stories", "");
         //this.setState({picturePath: path});
         await ViroARTrackingTargets.createTargets({
           "targetOne" : {
@@ -99,40 +98,40 @@ export default class ArScene extends Component {
   }
   setVideoComponent = () => {
     let path = this.state.stage.onPictureMatch[0].path;
-    path = this.state.appDir + path.replace("assets/stories", "");;
+    path = 'file://' + this.state.appDir + path.replace("assets/stories", "");;
     console.log(path);
-    this.setState({'videoPath': path});
+    let loop = this.state.stage.onPictureMatch[0].loop;
+    this.setState({'videoPath': path, 'videoLoop': loop});
   }
   loadAndPlayAudio = async () => {
     //@audiofile is stage path + filename
     console.log('loadAndPlayAudio');
     try {
       let path = this.state.stage.onZoneEnter[0].path;
-      path = this.state.appDir + path.replace("assets/stories", "");;
-      this.setState({audioPath: path});
+      path = 'file://'+this.state.appDir + path.replace("assets/stories", "");;
       console.log('audio_path', path);
       let loop = this.state.stage.onZoneEnter[0].loop;
-      this.setState({audioLoop: loop});
+      this.setState({'audioPath': path,'audioLoop': loop });
     } catch(e) {
       console.log(e);
     }
+  }
+  onFinishSound = () => {
+    console.log("Sound or loop item terminated");
+  }
+  onErrorSound = (error) => {
+    console.log(error);
   }
   toPath = (radius) => {
       console.log('radius', radius);
   }
   render = () => {
-    if (!this.state.videoPath || this.state.videoPath === "") {
-      return (
-          <SafeAreaView style={styles.container}>
-            <ActivityIndicator size="large" color="#0000ff" />
-          </SafeAreaView>
-      );
-    }
     return (
       <ViroARScene onTrackingUpdated={this.onInitialized}>
-        <ViroSound paused={false}
+        <ViroSound
+           paused={false}
            muted={false}
-           source={require('./res/sound.mp3'}
+           source={{uri: this.state.audioPath }}
            loop={this.state.audioLoop}
            volume={1.0}
            onFinish={this.onFinishSound}
@@ -140,10 +139,10 @@ export default class ArScene extends Component {
         />
         <ViroARImageMarker target={"targetOne"} >
             <ViroVideo
-              source={require(this.state.videoPath)}
+              source={{uri: this.state.videoPath}}
               height={3}
               width={3}
-              loop={false}
+              loop={this.state.videoLoop}
               position={[0,2,-5]}
             />
         </ViroARImageMarker>
