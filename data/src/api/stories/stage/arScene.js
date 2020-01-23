@@ -9,13 +9,13 @@ import {
   ViroARScene,
   ViroARImageMarker,
   ViroVideo,
-  ViroImage,
   ViroText,
+  ViroSound,
   ViroARTrackingTargets,
   ViroAmbientLight
 } from 'react-viro';
 import KeepAwake from 'react-native-keep-awake';
-import Sound from 'react-native-sound';
+
 
 export default class ArScene extends Component {
   constructor(props) {
@@ -33,7 +33,9 @@ export default class ArScene extends Component {
       pictures: params.pictures,
       picturePath: "",
       audioPath: "",
+      audioLoop: false,
       videoPath: "",
+      videoLoop: false,
       onZoneEnter: params.onZoneEnter,
       onZoneLeave: params.onZoneLeave,
       onPictureMatch: params.onPictureMatch
@@ -110,63 +112,7 @@ export default class ArScene extends Component {
       this.setState({audioPath: path});
       console.log('audio_path', path);
       let loop = this.state.stage.onZoneEnter[0].loop;
-      console.log('loop', loop);
-      // Enable playback in silence mode
-      Sound.setCategory('Playback');
-
-      // Load the sound file 'audio.mp3' from the app bundle
-      // See notes below about preloading sounds within initialization code below.
-      const audio = await new Sound(path, Sound.MAIN_BUNDLE, (error) => {
-        if (error) {
-          console.log('failed to load the sound', error);
-          return;
-        }
-        // loaded successfully
-        console.log('duration in seconds: ' + audio.getDuration() + 'number of channels: ' + audio.getNumberOfChannels());
-        // Reduce the volume by half
-        audio.setVolume(0.7);
-
-        // Position the sound to the full right in a stereo field
-        // audio.setPan(1);
-
-        // Loop indefinitely until stop() is called
-        if(loop) audio.setNumberOfLoops(-1);
-        // Play the sound with an onEnd callback
-        audio.play((success) => {
-          if (success) {
-            // here as the audio is terminated we are ready for discover
-            console.log('successfully finished playing');
-          } else {
-            console.log('playback failed due to audio decoding errors');
-          }
-        });
-      });
-
-
-
-      // Get properties of the player instance
-      console.log('volume: ' + audio.getVolume());
-      console.log('pan: ' + audio.getPan());
-      console.log('loops: ' + audio.getNumberOfLoops());
-
-      // // Seek to a specific point in seconds
-      // audio.setCurrentTime(2.5);
-      //
-      // // Get the current playback point in seconds
-      // audio.getCurrentTime((seconds) => console.log('at ' + seconds));
-      //
-      // // Pause the sound
-      // audio.pause();
-      //
-      // // Stop the sound and rewind to the beginning
-      // audio.stop(() => {
-      //   // Note: If you want to play a sound after stopping and rewinding it,
-      //   // it is important to call play() in a callback.
-      //   audio.play();
-      // });
-
-      // Release the audio player resource
-      //audio.release();
+      this.setState({audioLoop: loop});
     } catch(e) {
       console.log(e);
     }
@@ -184,6 +130,14 @@ export default class ArScene extends Component {
     }
     return (
       <ViroARScene onTrackingUpdated={this.onInitialized}>
+        <ViroSound paused={false}
+           muted={false}
+           source={require('./res/sound.mp3'}
+           loop={this.state.audioLoop}
+           volume={1.0}
+           onFinish={this.onFinishSound}
+           onError={this.onErrorSound}
+        />
         <ViroARImageMarker target={"targetOne"} >
             <ViroVideo
               source={require(this.state.videoPath)}
