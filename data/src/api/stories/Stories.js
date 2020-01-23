@@ -7,7 +7,6 @@ import { MAPBOX_KEY  } from 'react-native-dotenv';
 import  distance from '@turf/distance';
 import * as RNFS from 'react-native-fs';
 import Reactotron from 'reactotron-react-native';
-import Sound from 'react-native-sound';
 import KeepAwake from 'react-native-keep-awake';
 
 function humanFileSize(bytes, si) {
