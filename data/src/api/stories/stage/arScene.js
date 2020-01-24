@@ -98,18 +98,14 @@ export default class ArScene extends Component {
   }
   setVideoComponent = () => {
     let path = this.state.stage.onPictureMatch[0].path;
-    path = 'file://' + this.state.appDir + path.replace("assets/stories", "");;
-    console.log(path);
+    path = 'file://' + this.state.appDir + path.replace("assets/stories", "");
     let loop = this.state.stage.onPictureMatch[0].loop;
     this.setState({'videoPath': path, 'videoLoop': loop});
   }
   loadAndPlayAudio = async () => {
-    //@audiofile is stage path + filename
-    console.log('loadAndPlayAudio');
     try {
       let path = this.state.stage.onZoneEnter[0].path;
-      path = 'file://'+this.state.appDir + path.replace("assets/stories", "");;
-      console.log('audio_path', path);
+      path = 'file://'+this.state.appDir + path.replace("assets/stories", "");
       let loop = this.state.stage.onZoneEnter[0].loop;
       this.setState({'audioPath': path,'audioLoop': loop });
     } catch(e) {
@@ -117,7 +113,7 @@ export default class ArScene extends Component {
     }
   }
   onFinishSound = () => {
-    console.log("Sound or loop item terminated");
+    console.log("Sound terminated");
   }
   onErrorSound = (error) => {
     console.log(error);
@@ -127,7 +123,7 @@ export default class ArScene extends Component {
   }
   render = () => {
     return (
-      <ViroARScene onTrackingUpdated={this.onInitialized} displayPointCloud={true} >
+      <ViroARScene onTrackingUpdated={this.onInitialized} displayPointCloud >
         <ViroSound
            paused={false}
            muted={false}
