@@ -127,7 +127,7 @@ export default class ArScene extends Component {
   }
   render = () => {
     return (
-      <ViroARScene onTrackingUpdated={this.onInitialized}>
+      <ViroARScene onTrackingUpdated={this.onInitialized} displayPointCloud={true} >
         <ViroSound
            paused={false}
            muted={false}
