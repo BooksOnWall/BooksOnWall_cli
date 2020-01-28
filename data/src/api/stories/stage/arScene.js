@@ -48,6 +48,7 @@ export default class ArScene extends Component {
     this.buildTrackingTargets = this.buildTrackingTargets.bind(this);
     this.setVideoComponent = this.setVideoComponent.bind(this);
     this.loadAndPlayAudio = this.loadAndPlayAudio.bind(this);
+    this.setChromaKeyColor = this.setChromaKeyColor.bind(this);
   }
   componentDidMount = async () => {
     try {
@@ -55,6 +56,7 @@ export default class ArScene extends Component {
       await this.loadAndPlayAudio();
       await this.setVideoComponent();
       await this.buildTrackingTargets();
+      await this.setChromaKeyColor('#000000');
     } catch(e) {
       console.log(e);
     }
@@ -71,6 +73,13 @@ export default class ArScene extends Component {
     } else if (state == ViroConstants.TRACKING_NONE) {
       // Handle loss of tracking
     }
+  }
+  setChromaKeyColor = (color) => {
+    ViroMaterials.createMaterials({
+      chromaKeyFilteredVideo : {
+        chromaKeyFilteringColor: color
+      },
+    });
   }
   buildTrackingTargets = async () => {
     try {
@@ -118,6 +127,9 @@ export default class ArScene extends Component {
   onFinishSound = () => {
     console.log("Sound terminated");
   }
+  onFinishVideo = () => {
+    console.log("Video terminated");
+  }
   onErrorSound = (error) => {
     console.log(error);
   }
@@ -143,10 +155,11 @@ export default class ArScene extends Component {
               onDrag={()=>{}}
               visible={true}
               loop={this.state.videoLoop}
-              position={[0,-.1,0]}
+              position={[0,0,0]}
               rotation={[-90,0,0]}
               opacity={1}
-              materials={["chromaKeyFilteredVideo"]}
+              onFinish={this.onFinishVideo}
+              //materials={["chromaKeyFilteredVideo"]}
             />
         </ViroARImageMarker>
       </ViroARScene>
