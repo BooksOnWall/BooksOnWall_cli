@@ -48,7 +48,6 @@ export default class ArScene extends Component {
     this.buildTrackingTargets = this.buildTrackingTargets.bind(this);
     this.setVideoComponent = this.setVideoComponent.bind(this);
     this.loadAndPlayAudio = this.loadAndPlayAudio.bind(this);
-    this.setChromaKeyColor = this.setChromaKeyColor.bind(this);
   }
   componentDidMount = async () => {
     try {
@@ -56,7 +55,6 @@ export default class ArScene extends Component {
       await this.loadAndPlayAudio();
       await this.setVideoComponent();
       await this.buildTrackingTargets();
-      await this.setChromaKeyColor('#000000');
     } catch(e) {
       console.log(e);
     }
@@ -73,13 +71,6 @@ export default class ArScene extends Component {
     } else if (state == ViroConstants.TRACKING_NONE) {
       // Handle loss of tracking
     }
-  }
-  setChromaKeyColor = (color) => {
-    ViroMaterials.createMaterials({
-      chromaKeyFilteredVideo : {
-        chromaKeyFilteringColor: color
-      },
-    });
   }
   buildTrackingTargets = async () => {
     try {
@@ -168,7 +159,7 @@ export default class ArScene extends Component {
 }
 ViroMaterials.createMaterials({
   chromaKeyFilteredVideo : {
-    chromaKeyFilteringColor: "#000000"
+    chromaKeyFilteringColor: "#53e917"
   },
 });
 
