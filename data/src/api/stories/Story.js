@@ -257,6 +257,12 @@ export default class Story extends Component {
                   value={story.sinopsys}
                   stylesheet={styles}
                 />
+                // <HTMLView
+                //   value={story.credits}
+                //   stylesheet={styles}
+                // />
+              /// list of sponsorts
+              ///
               </ScrollView>
               {distance && (
                 <Text> {I18n.t("distance", "You are at {distance} km from the beginning of your story.")}</Text>
