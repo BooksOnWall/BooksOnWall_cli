@@ -11,6 +11,7 @@ import * as RNFS from 'react-native-fs';
 import Reactotron from 'reactotron-react-native';
 import KeepAwake from 'react-native-keep-awake';
 import I18n from "../../utils/i18n";
+import Toast from 'react-native-simple-toast';
 
 function humanFileSize(bytes, si) {
     var thresh = si ? 1000 : 1024;
@@ -142,7 +143,7 @@ export default class Story extends Component {
           this.setState({fromLat: position.coords.latitude, fromLong: position.coords.longitude});
           this.setState({initialPosition});
         },
-        error => Alert.alert('Error', JSON.stringify(error)),
+        error => oast.showWithGravity(I18n.t("POSITION_UNKNOWN","GPS position unknown, Are you inside a building ? Please go outside."), Toast.LONG, Toast.TOP),
         { timeout: 10000, maximumAge: 1000, enableHighAccuracy: true},
       );
       this.watchID = await Geolocation.watchPosition(position => {
@@ -172,7 +173,7 @@ export default class Story extends Component {
             this.setState({distance: dis.toFixed(2)});
           };
       },
-      error => Alert.alert('Error', JSON.stringify(error)),
+      error => error => oast.showWithGravity(I18n.t("POSITION_UNKNOWN","GPS position unknown, Are you inside a building ? Please go outside."), Toast.LONG, Toast.TOP),
       {timeout: 5000, maximumAge: 1000, enableHighAccuracy: true, distanceFilter: 1},
       );
     } catch(e) {
@@ -233,16 +234,6 @@ export default class Story extends Component {
     const storyAr = () => <Icon raised name='road' type='font-awesome' color='#f50' onPress={() => navigate('ToAr', {screenProps: this.props.screenProps, story: story, index: 0})} />;
     const dlbuttons = (story.isInstalled) ? [ { element: storyDelete }, { element: storyPlay }, { element: storyAr} ]: [ { element: storyInstall }];
     const {navigate} = this.props.navigation;
-
-    // if (!distance || this.state.Platform === 'web') {
-    //   return (
-    //     <View style={styles.loader}>
-    //       <Text style={styles.loader}>{'['+ fromLong +',' +fromLat+']  ['+toLong+', '+ toLat+ ']'}</Text>
-    //       <Text style={styles.loader}>Please wait while we get your GPS Position</Text>
-    //       <ActivityIndicator size="large" color="#0000ff" />
-    //     </View>
-    //   );
-    // }
     return (
       <ThemeProvider>
         <SafeAreaView style={styles.container}>
@@ -257,12 +248,6 @@ export default class Story extends Component {
                   value={story.sinopsys}
                   stylesheet={styles}
                 />
-                // <HTMLView
-                //   value={story.credits}
-                //   stylesheet={styles}
-                // />
-              /// list of sponsorts
-              ///
               </ScrollView>
               {distance && (
                 <Text> {I18n.t("distance", "You are at {distance} km from the beginning of your story.")}</Text>
