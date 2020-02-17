@@ -423,7 +423,7 @@ yarn add rn-fetch-blob@0.10.15 2> >(grep -v warning 1>&2) && RNFB_ANDROID_PERMIS
 yarn add react-native-fs@2.13.2 2> >(grep -v warning 1>&2) && react-native link react-native-fs
 
 ## simple toast popup lib
-yarn add react-native-simple-toast 2> >(grep -v warning 1>&2) && react-native link react-native-simple-toast   
+yarn add react-native-simple-toast 2> >(grep -v warning 1>&2) && react-native link react-native-simple-toast
 ## to unzip the story.zip
 echo -e "\033[1;31m Warning react-native-zip-archive@4.1.5 not installed
   because it won't compile yet:
@@ -487,7 +487,7 @@ yarn react-native-jetifier 2> >(grep -v warning 1>&2)
 
 echo -e "\033[1;32m Adding commands to package.json \033[0m"
 pwd
-SCRIPTS=`jq '.scripts = {  syncFromCli: "cp -r ../data/src/api ../data/src/App.js ../data/src/utils src/.", syncToCli: "cp -r src/* ../data/src/.", doctor: "npx @react-native-community/cli doctor", link: "react-native link", setIcon: "react-native set-icon --path", setSplash: "react-native set-splash --path", postinstall: "yarn react-native-jetifier", prestart: "./node_modules/react-viro/bin/run_ngrok.sh", start: "node node_modules/react-native/local-cli/cli.js start", android: "react-native run-android --variant=arDebug", ios: "react-native run-ios --variant=arDebug" }' package.json`
+SCRIPTS=`jq '.scripts = {  syncFromCli: "cp -r ../data/src/api ../data/src/App.js ../data/src/utils src/.", syncToCli: "cp -r src/* ../data/src/.", doctor: "npx @react-native-community/cli doctor", link: "react-native link", setIcon: "react-native set-icon --path", setSplash: "react-native set-splash --path", postinstall: "yarn react-native-jetifier", prestart: "./node_modules/react-viro/bin/run_ngrok.sh", start: "node node_modules/react-native/local-cli/cli.js start", android: "react-native run-android --variant=arDebug", ios: "react-native run-ios --variant=arDebug", "rnpm": { "assets": ["assets/nav","assets/fonts/"]} }' package.json`
 touch n.json && echo $SCRIPTS >> n.json
 rm package.json && touch package.json
 jq . n.json > package.json && rm n.json
