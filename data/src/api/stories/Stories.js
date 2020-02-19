@@ -1,7 +1,7 @@
 import React, {Component} from 'react';
 import SafeAreaView from 'react-native-safe-area-view';
 import { Platform, ActivityIndicator, ScrollView, Animated, Image, StyleSheet, View, Text, I18nManager } from 'react-native';
-import { Header,Card, ListItem, ThemeProvider } from 'react-native-elements';
+import { Header, Card, ListItem, ThemeProvider } from 'react-native-elements';
 import Geolocation from '@react-native-community/geolocation';
 import { MAPBOX_KEY  } from 'react-native-dotenv';
 import  distance from '@turf/distance';
@@ -11,6 +11,7 @@ import KeepAwake from 'react-native-keep-awake';
 import I18n from "../../utils/i18n";
 import Icon from "../../utils/Icon";
 import Toast from 'react-native-simple-toast';
+import { Banner } from '../../../assets/banner';
 
 function humanFileSize(bytes, si) {
     var thresh = si ? 1000 : 1024;
@@ -107,7 +108,7 @@ export default class Stories extends Component {
             this.setState({distance: dis.toFixed(2)});
           };
       },
-      error => oast.showWithGravity(I18n.t("POSITION_UNKNOWN","GPS position unknown, Are you inside a building ? Please go outside."), Toast.LONG, Toast.TOP),
+      error => Toast.showWithGravity(I18n.t("POSITION_UNKNOWN","GPS position unknown, Are you inside a building ? Please go outside."), Toast.LONG, Toast.TOP),
       {timeout: 5000, maximumAge: 1000, enableHighAccuracy: true, distanceFilter: 1},
     );
     } catch(e) {
@@ -154,21 +155,25 @@ export default class Stories extends Component {
       <ThemeProvider>
         <SafeAreaView style={styles.container}>
           <Header
-            centerComponent={{ text: I18n.t("Stories","Stories"), style: { color: '#fff' } }}
-            rightComponent={{ icon: 'home', color: '#fff' }}
+            containerStyle={{ backgroundColor: '#D8D8D8', justifyContent: 'space-around', borderWidth: 0, paddingTop: 25, paddingBottom: 25}}
+            centerComponent={<Icon name='bow-logo' style={styles.icon}/>}
             />
-          <Card  style={styles.card}>
+          <Card  style={styles.card} containerStyle={{padding: 0, margin: 0, borderWidth: 0}}>
               <ScrollView >
                 {
                   stories.map((story, i) => (
-                    <ListItem
+                    <ListItem 
+                      //contentContainerStyle={{ backgroundImage: Banner["banner" + story.id] }}
+                      containerStyle={{backgroundColor: '#ccc', }}
                       key={i}
-                      leftIcon={{ name: (story.isInstalled) ? 'explore' : 'arrow-drop-down-circle' }}
                       title={story.title}
+                      titleStyle={{ color: 'white', fontFamily: "TrashHand", fontSize: 24, textAlign: 'center', letterSpacing: 2, paddingTop: 16 }}
+                      subtitle={story.city}
+                      subtitleStyle={{ color: 'white', fontFamily: "ATypewriterForMe", fontSize: 13, textAlign: 'center', letterSpacing: 1, paddingBottom: 16 }}
                       onPress={() => navigate('Story', {story: story})}
                       bottomDivider
                       chevron
-                    />
+                    /> 
                   ))
                 }
               </ScrollView>
@@ -184,22 +189,28 @@ const styles = StyleSheet.create({
     marginHorizontal: 0,
     justifyContent: 'flex-start',
     alignItems: "stretch",
-    backgroundColor: '#F5FCFF',
+    backgroundColor: '#D8D8D8',
   },
-  card : {
+  card: {
     margin: 0,
-    padding: 0
+    padding: 0,
+    backgroundColor: '#D8D8D8',
   },
   scrollView: {
     marginHorizontal: 0,
+    backgroundColor: '#D8D8D8',
   },
   bold: {
-    fontWeight: 'bold'
+    fontWeight: '900'
   },
   loader: {
     flex: 1,
     justifyContent: "center",
     alignItems: "stretch",
     backgroundColor: "whitesmoke"
-  }
+  },
+  icon: {
+    color: "#9E1C00",
+    fontSize: 40,
+    }
 });

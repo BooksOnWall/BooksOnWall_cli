@@ -1,7 +1,7 @@
 import React, {Component} from 'react';
 import SafeAreaView from 'react-native-safe-area-view';
-import { PermissionsAndroid, Alert, Platform, ActivityIndicator, ScrollView, Animated, Image, StyleSheet, View, Text, I18nManager } from 'react-native';
-import { Header,Card, ListItem, ButtonGroup, Button, Icon, ThemeProvider } from 'react-native-elements';
+import { PermissionsAndroid, Alert, Platform, ActivityIndicator, ScrollView, Animated, Image, StyleSheet, View, Text, I18nManager, ImageBackground } from 'react-native';
+import { Header, Card, ListItem, ButtonGroup, Button, ThemeProvider } from 'react-native-elements';
 import Geolocation from '@react-native-community/geolocation';
 import { MAPBOX_KEY  } from 'react-native-dotenv';
 import  distance from '@turf/distance';
@@ -11,6 +11,8 @@ import * as RNFS from 'react-native-fs';
 import Reactotron from 'reactotron-react-native';
 import KeepAwake from 'react-native-keep-awake';
 import I18n from "../../utils/i18n";
+import Icon from "../../utils/Icon";
+import { Banner } from '../../../assets/banner';
 import Toast from 'react-native-simple-toast';
 
 function humanFileSize(bytes, si) {
@@ -143,7 +145,7 @@ export default class Story extends Component {
           this.setState({fromLat: position.coords.latitude, fromLong: position.coords.longitude});
           this.setState({initialPosition});
         },
-        error => oast.showWithGravity(I18n.t("POSITION_UNKNOWN","GPS position unknown, Are you inside a building ? Please go outside."), Toast.LONG, Toast.TOP),
+        error => Toast.showWithGravity(I18n.t("POSITION_UNKNOWN","GPS position unknown, Are you inside a building ? Please go outside."), Toast.LONG, Toast.TOP),
         { timeout: 10000, maximumAge: 1000, enableHighAccuracy: true},
       );
       this.watchID = await Geolocation.watchPosition(position => {
@@ -173,7 +175,7 @@ export default class Story extends Component {
             this.setState({distance: dis.toFixed(2)});
           };
       },
-      error => error => oast.showWithGravity(I18n.t("POSITION_UNKNOWN","GPS position unknown, Are you inside a building ? Please go outside."), Toast.LONG, Toast.TOP),
+      error => error => Toast.showWithGravity(I18n.t("POSITION_UNKNOWN","GPS position unknown, Are you inside a building ? Please go outside."), Toast.LONG, Toast.TOP),
       {timeout: 5000, maximumAge: 1000, enableHighAccuracy: true, distanceFilter: 1},
       );
     } catch(e) {
@@ -228,79 +230,171 @@ export default class Story extends Component {
   render() {
     const {story, distance, transportIndex, dlIndex,  access_token, profile, granted, fromLat, fromLong, toLat, toLong } = this.state;
     const transportbuttons = [ I18n.t('Auto'),  I18n.t('Pedestrian'),  I18n.t('Bicycle')];
-    const storyPlay = () => <Icon raised name='play-circle' type='font-awesome' color='#f50' onPress={() => this.launchStory()} />;
-    const storyDelete = () => <Icon raised name='trash' type='font-awesome' color='#f50' onPress={() => this.deleteStory(story.id)} />;
-    const storyInstall = () => <Icon raised name='download' type='font-awesome' color='#f50' onPress={() => this.downloadStory(story.id)} />;
-    const storyAr = () => <Icon raised name='road' type='font-awesome' color='#f50' onPress={() => navigate('ToAr', {screenProps: this.props.screenProps, story: story, index: 0})} />;
+    const storyPlay = () => <Icon size={40} name='play-circle' color='#fff' onPress={() => this.launchStory()} />;
+    const storyDelete = () => <Icon size={40} name='trash' color='#fff' onPress={() => this.deleteStory(story.id)} />;
+    const storyInstall = () => <Icon size={40} name='download' color='#fff' onPress={() => this.downloadStory(story.id)} />;
+    const storyAr = () => <Icon size={15} name='geopoint' color='#fff' onPress={() => navigate('ToAr', {screenProps: this.props.screenProps, story: story, index: 0})} />;
     const dlbuttons = (story.isInstalled) ? [ { element: storyDelete }, { element: storyPlay }, { element: storyAr} ]: [ { element: storyInstall }];
     const {navigate} = this.props.navigation;
     return (
       <ThemeProvider>
         <SafeAreaView style={styles.container}>
-          <Header
-            leftComponent={{ icon: 'menu', color: '#fff' }}
-            centerComponent={{ text: story.title, style: { color: '#fff' } }}
-            rightComponent={{ icon: 'home', color: '#fff' }}
-            />
-            <Card>
-              <ScrollView style={styles.sinopsys}>
+          <Header 
+            style={styles.header}
+            containerStyle={{ backgroundColor: '#D8D8D8', justifyContent: 'space-around', borderWidth: 0, paddingTop: 25, paddingBottom: 25}}
+            leftComponent={{ icon: 'menu', color: '#4B4F53' }}
+            centerComponent={<Icon name='bow-logo' style={styles.icon}/>}
+          />
+          <View style={styles.card} >
+              <ImageBackground source={Banner['banner1']} style={styles.tile}>
+                <Text style={styles.title}>{story.title}</Text>
+                <Text style={styles.location}>{story.city} - {story.country}</Text>
+              </ImageBackground>
+              <ScrollView style={styles.scrollview}>
+                <View style={styles.sinopsys} >
                 <HTMLView
                   value={story.sinopsys}
                   stylesheet={styles}
                 />
+                <Text h2 style={styles.credits}>{I18n.t("credits", "Credits")}</Text>
+                <HTMLView
+                  value={story.credits}
+                  stylesheet={styles}
+                />
+               </View>
               </ScrollView>
               {distance && (
                 <Text> {I18n.t("distance", "You are at {distance} km from the beginning of your story.")}</Text>
               )}
-              {story.isInstalled && (
+            </View>
+
+            <View style={styles.nav}>
+                {story.isInstalled && (
                 <>
                 <Text style={styles.bold}>{I18n.t("Transportation","Please choose your mode of transportation and press Start Navigation.")}</Text>
-                <ButtonGroup
+                <ButtonGroup style={styles.buttongroup} 
                   onPress={this.updateTransportIndex}
                   selectedIndex={transportIndex}
                   buttons={transportbuttons}
-                  containerStyle={{height: 40}}
+                  containerStyle={{flex: 1}}
                   disabled={[1, 2]}
                   //disabled={true}
                   />
                 </>
               )}
 
-              <ButtonGroup
+              <ButtonGroup 
+                buttonStyle={{ backgroundColor: '#4B4F53', borderWidth: 0, borderColor: '#4B4F53'  }}
                 onPress={this.updateDlIndex}
                 selectedIndex={dlIndex}
                 buttons={dlbuttons}
-                containerStyle={{height: 60}}
-
+                containerStyle={{flex: 1, borderWidth: 0, borderColor: '#4B4F53' }}
                 />
-            </Card>
+            </View>
+
         </SafeAreaView>
       </ThemeProvider>
     );
   }
 }
 const styles = StyleSheet.create({
+  p: {
+    fontFamily: 'ATypewriterForMe',
+    fontSize: 14,
+    marginTop: 1,
+    marginBottom: 1,
+    padding: 0,
+    lineHeight: 20,
+    letterSpacing: 0,
+  },
   container: {
     flex: 1,
-    justifyContent: "flex-start",
-    alignItems: "stretch",
-    backgroundColor: "whitesmoke"
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    backgroundColor: '#D8D8D8',
+    padding: 0,
+  },
+  header: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderWidth: 0,
+    backgroundColor: '#D8D8D8', 
+    margin: 0,
+    padding: 0,
+  },
+  card: {
+    flex: 5,
+    flexDirection: 'column',
+    padding: 0, 
+    margin: 0,
+    borderWidth: 0,
+    backgroundColor: '#D8D8D8',
+  },
+  tile:{
+    flex: 1,
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'stretch',
+    textAlign: 'center',
+    backgroundColor: '#D8D8D8',
+    maxHeight: 90,
+  },
+  title: {
+    flex: 1,
+    paddingTop: 25, 
+    paddingBottom: 1,
+    fontFamily: 'TrashHand',
+    fontSize: 24,
+    textAlign: 'center',
+    letterSpacing: 2,
+    color: '#fff',
+    margin: 0,
+  }, 
+  location: {
+    flex: 1,
+    paddingTop: 0, 
+    paddingBottom: 3,
+    fontFamily: 'ATypewriterForMe',
+    fontSize: 13,
+    textAlign: 'center',
+    letterSpacing: 2,
+    margin: 0,
+    color: '#fff',
+  },  
+  scrollview: {
+    backgroundColor: '#D8D8D8',
+    flex: 3,
   },
   sinopsys: {
-    minHeight: 300,
-    maxHeight: 300,
-    marginHorizontal: 0,
+    backgroundColor: '#D8D8D8',
+    padding: 20,
+    marginTop: 3,
+    flex: 1,
   },
-  scrollView: {
-    marginHorizontal: 0,
+  credits:{
+      fontWeight: 'bold', padding: 0, marginTop: 30, marginBottom: 5, fontSize: 16, textTransform: 'uppercase'
   },
   bold: {
-    fontWeight: 'bold'
-  },
+    fontWeight: 'bold',
+  },  
   loader: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "stretch",
-    backgroundColor: "whitesmoke"
-  }
+    justifyContent: 'center',
+    alignItems: 'stretch',
+    backgroundColor: 'whitesmoke',
+  },
+  icon: {
+    color: '#9E1C00',
+    fontSize: 40,
+  },
+  nav: {
+    flex: 1,
+    fontSize: 20,
+    backgroundColor: '#4B4F53', 
+    padding: 0,
+    margin: 0,
+    maxHeight: 60
+  },
+  buttongroup: { fontSize: 20, backgroundColor: 'transparent', maxHeight: 40, borderWidth: 0, borderColor: '#4B4F53'  }
 });
