@@ -45,6 +45,7 @@ export default class Story extends Component {
       //photo: 'file://'+this.props.screenProps.AppDir+'/'+ this.props.navigation.getParam('story').id + '/stages/'+ this.props.navigation.getParam('story').stages[0].id + '/' + this.props.navigation.getParam('story').stages[0].photo[0].name,
       downloadProgress: 0,
       story: this.props.navigation.getParam('story'),
+      theme: this.props.navigation.getParam('story').theme,
       granted: Platform.OS === 'ios',
       transportIndex: 0,
       dlIndex: null,
@@ -56,9 +57,8 @@ export default class Story extends Component {
       fromLong: null,
       toLat: null ,
       toLong: null,
-      distance: null
+      distance: null,
     };
-    console.table(this.state.story);
     this.updateTransportIndex = this.updateTransportIndex.bind(this);
     this.updateDlIndex = this.updateDlIndex.bind(this);
     this.getCurrentLocation = this.getCurrentLocation.bind(this);
@@ -94,7 +94,7 @@ export default class Story extends Component {
             mime : 'application/zip',
             description : I18n.t("Story_downloaded","Story downloaded by BooksOnWall."),
             mediaScannable: true,
-            path : appDir
+            path : appDir + '/stories/'
         }
     })
     .fetch('POST', this.state.server + '/zip/' + sid)
@@ -223,12 +223,8 @@ export default class Story extends Component {
     }
 
   }
-
-  // storyPlay = () => <Text>Play</Text>
-  // storyDelete = () => <Text>Delete</Text>
-  // storyInstall = () => <Text>Install</Text>
   render() {
-    const {story, distance, transportIndex, dlIndex,  access_token, profile, granted, fromLat, fromLong, toLat, toLong } = this.state;
+    const {theme, story, distance, transportIndex, dlIndex,  access_token, profile, granted, fromLat, fromLong, toLat, toLong } = this.state;
     const transportbuttons = [ I18n.t('Auto'),  I18n.t('Pedestrian'),  I18n.t('Bicycle')];
     const storyPlay = () => <Icon size={40} name='geopoint' color='#4D0101' onPress={() => this.launchStory()} />;
     const storyDelete = () => <Icon size={40} name='trash' color='#4D0101' onPress={() => this.deleteStory(story.id)} />;
@@ -236,32 +232,145 @@ export default class Story extends Component {
     const storyAr = () => <Icon size={40} name='play' color='#4D0101' onPress={() => navigate('ToAr', {screenProps: this.props.screenProps, story: story, index: 0})} />;
     const dlbuttons = (story.isInstalled) ? [ { element: storyDelete }, { element: storyPlay }, { element: storyAr} ]: [ { element: storyInstall }];
     const {navigate} = this.props.navigation;
+    const themeSheet = StyleSheet.create({
+      p: {
+        fontFamily: theme.font3,
+        fontSize: 14,
+        marginTop: 1,
+        marginBottom: 1,
+        padding: 0,
+        lineHeight: 20,
+        letterSpacing: 0,
+        color: theme.color3
+      },
+      container: {
+        flex: 1,
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        backgroundColor: '#D8D8D8',
+        padding: 0,
+      },
+      header: {
+        flex: 1,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        borderWidth: 0,
+        backgroundColor: '#D8D8D8',
+        margin: 0,
+        padding: 0,
+      },
+      card: {
+        flex: 3,
+        flexDirection: 'column',
+        padding: 0,
+        margin: 0,
+        borderWidth: 0,
+        backgroundColor: '#D8D8D8',
+        marginBottom: 3,
+      },
+      tile:{
+        flex: 1,
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'stretch',
+        textAlign: 'center',
+        backgroundColor: '#D8D8D8',
+        maxHeight: 90,
+      },
+      title: {
+        flex: 1,
+        paddingTop: 25,
+        paddingBottom: 1,
+        fontFamily: 'TrashHand',
+        fontSize: 24,
+        textAlign: 'center',
+        letterSpacing: 2,
+        color: '#fff',
+        margin: 0,
+        textShadowColor: 'rgba(0, 0, 0, 0.85)', textShadowOffset: {width: -1, height: 1}, textShadowRadius: 5
+      },
+      location: {
+        flex: 1,
+        paddingTop: 0,
+        paddingBottom: 3,
+        fontFamily: 'ATypewriterForMe',
+        fontSize: 13,
+        textAlign: 'center',
+        letterSpacing: 2,
+        margin: 0,
+        color: '#fff',
+      },
+      scrollview: {
+        flex: 2,
+        backgroundColor: '#D8D8D8',
+        marginTop: 3
+      },
+      sinopsys: {
+        flex: 1,
+        backgroundColor: '#D8D8D8',
+        padding: 20,
+        marginTop: 3,
+      },
+      logo: {
+        color: '#9E1C00',
+        fontSize: 40,
+        textShadowColor: 'rgba(0, 0, 0, 0.35)',
+        textShadowOffset: {width: 1, height: 1},
+        textShadowRadius: 3,
+      },
+      nav: {
+        flex: 1,
+        fontSize: 20,
+        backgroundColor: '#d1d2d3',
+        padding: 0,
+        margin: 0,
+        justifyContent: 'center',
+      },
+      menssage: {
+        fontSize: 12,
+        color: '#000',
+        textAlign: 'center',
+        paddingTop: 5,
+        fontFamily: 'OpenSansCondensed-Light',
+      },
+      transport: {
+        fontSize: 14,
+        backgroundColor: '#4B4F53',
+        borderWidth: 0,
+        borderColor: '#d2d2d2',
+        minHeight: 40,
+        maxHeight: 40,
+        margin: 0,
+      },
+    });
     return (
       <ThemeProvider>
         <SafeAreaView style={styles.container}>
-          <Header 
+          <Header
             style={styles.header}
             containerStyle={{ backgroundColor: '#D8D8D8', justifyContent: 'space-around', borderWidth: 0, paddingTop: 25, paddingBottom: 25}}
             leftComponent={{ icon: 'menu', color: '#4B4F53' }}
             centerComponent={<Icon name='bow-logo' style={styles.logo}/>}
           />
           <View style={styles.card} >
-              <ImageBackground source={Banner['banner1']} style={styles.tile}>
+              <ImageBackground source={{uri: theme.banner.filePath}} style={styles.tile}>
                 <Text style={styles.title}>{story.title}</Text>
                 <Text style={styles.location}>{story.city} - {story.country}</Text>
               </ImageBackground>
-              <ScrollView style={styles.scrollview}>
-                <View style={styles.sinopsys} >
+              <ScrollView style={themeSheet.scrollview}>
+                <View style={themeSheet.sinopsys} >
                 <HTMLView
                   value={story.sinopsys}
                   stylesheet={styles}
                 />
-                <Text h2 style={styles.credits}>{I18n.t("credits", "Credits")}</Text>
-                <HTMLView
-                  value={story.credits}
-                  stylesheet={styles}
-                />
                </View>
+                <View style={styles.credits}>
+                    <Text h2 style={styles.subtitle}>{I18n.t("credits", "Credits")}</Text>
+                    <HTMLView
+                    value={story.credits}
+                    stylesheet={styles}
+                    />
+                </View>
               </ScrollView>
               {distance && (
                 <Text> {I18n.t("distance", "You are at {distance} km from the beginning of your story.")}</Text>
@@ -272,8 +381,8 @@ export default class Story extends Component {
                 {story.isInstalled && (
                 <>
                 <Text style={styles.menssage}>{I18n.t("Transportation","Please choose your mode of transportation and press Start Navigation.")}</Text>
-                <ButtonGroup 
-                  style={styles.transport} 
+                <ButtonGroup
+                  style={styles.transport}
                   onPress={this.updateTransportIndex}
                   selectedIndex={transportIndex}
                   buttons={transportbuttons}
@@ -288,13 +397,14 @@ export default class Story extends Component {
                   />
                 </>
               )}
-              <ButtonGroup style={styles.menu} 
+              <ButtonGroup style={styles.menu}
                 buttonStyle={{ backgroundColor: '#9E1C00', borderWidth: 0, borderColor: '#4B4F53', margin: 0, minHeight: 50, maxHeight: 50}}
                 onPress={this.updateDlIndex}
                 selectedIndex={dlIndex}
+                selectedButtonStyle= {{backgroundColor: '#750000'}}
                 buttons={dlbuttons}
                 containerStyle= {{flex: 1, borderWidth: 0, borderColor: '#4B4F53', minHeight: 50, maxHeight: 50, backgroundColor: '#9E1C00', borderRadius: 0, margin: 0, padding: 0}}
-                innerBorderStyle= {{  color: '#750000' }}
+                innerBorderStyle= {{ color: '#750000' }}
                 />
             </View>
 
@@ -314,6 +424,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0,
     color: '#000'
   },
+  b: {fontFamily: 'OpenSansCondensed-Bold',
+    },
   container: {
     flex: 1,
     flexDirection: 'column',
@@ -326,14 +438,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     borderWidth: 0,
-    backgroundColor: '#D8D8D8', 
+    backgroundColor: '#D8D8D8',
     margin: 0,
     padding: 0,
   },
   card: {
     flex: 3,
     flexDirection: 'column',
-    padding: 0, 
+    padding: 0,
     margin: 0,
     borderWidth: 0,
     backgroundColor: '#D8D8D8',
@@ -350,7 +462,7 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
-    paddingTop: 25, 
+    paddingTop: 25,
     paddingBottom: 1,
     fontFamily: 'TrashHand',
     fontSize: 24,
@@ -358,11 +470,11 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     color: '#fff',
     margin: 0,
-    textShadowColor: 'rgba(0, 0, 0, 0.85)', textShadowOffset: {width: -1, height: 1}, textShadowRadius: 5  
-  }, 
+    textShadowColor: 'rgba(0, 0, 0, 0.85)', textShadowOffset: {width: -1, height: 1}, textShadowRadius: 5
+  },
   location: {
     flex: 1,
-    paddingTop: 0, 
+    paddingTop: 0,
     paddingBottom: 3,
     fontFamily: 'ATypewriterForMe',
     fontSize: 13,
@@ -370,7 +482,7 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     margin: 0,
     color: '#fff',
-  },  
+  },
   scrollview: {
     flex: 2,
     backgroundColor: '#D8D8D8',
@@ -382,14 +494,18 @@ const styles = StyleSheet.create({
     padding: 20,
     marginTop: 3,
   },
-  credits:{
-    fontWeight: 'bold', 
-    padding: 0, 
-    marginTop: 30, 
-    marginBottom: 5, 
-    fontSize: 16, 
+ credits: {
+     backgroundColor: '#c2c3c4',
+     padding: 20,
+  },
+  subtitle: {
+    fontWeight: 'bold',
+    padding: 0,
+    marginTop: 15,
+    marginBottom: 25,
+    fontSize: 16,
     textTransform: 'uppercase'
-  },  
+  },
   loader: {
     flex: 1,
     justifyContent: 'center',
@@ -406,7 +522,7 @@ const styles = StyleSheet.create({
   nav: {
     flex: 1,
     fontSize: 20,
-    backgroundColor: '#d1d2d3', 
+    backgroundColor: '#d1d2d3',
     padding: 0,
     margin: 0,
     justifyContent: 'center',
@@ -419,13 +535,13 @@ const styles = StyleSheet.create({
     fontFamily: 'OpenSansCondensed-Light',
   },
   transport: {
-    fontSize: 14, 
-    backgroundColor: '#4B4F53', 
-    borderWidth: 0, 
-    borderColor: '#d2d2d2', 
+    fontSize: 14,
+    backgroundColor: '#4B4F53',
+    borderWidth: 0,
+    borderColor: '#d2d2d2',
     minHeight: 40,
     maxHeight: 40,
-    margin: 0,  
+    margin: 0,
   },
   menu: {
     flex: 1,
