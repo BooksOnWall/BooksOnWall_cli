@@ -42,7 +42,6 @@ export default class Story extends Component {
       server: this.props.screenProps.server,
       appName: this.props.screenProps.appName,
       appDir: this.props.screenProps.AppDir,
-      //photo: 'file://'+this.props.screenProps.AppDir+'/'+ this.props.navigation.getParam('story').id + '/stages/'+ this.props.navigation.getParam('story').stages[0].id + '/' + this.props.navigation.getParam('story').stages[0].photo[0].name,
       downloadProgress: 0,
       story: this.props.navigation.getParam('story'),
       theme: this.props.navigation.getParam('story').theme,
@@ -64,7 +63,6 @@ export default class Story extends Component {
     this.getCurrentLocation = this.getCurrentLocation.bind(this);
   }
   componentDidMount = async () => {
-
     if (!this.props.navigation.getParam('story') ) this.props.navigation.navigate('Stories');
     try {
       await KeepAwake.activate();
@@ -76,7 +74,9 @@ export default class Story extends Component {
       console.log(e);
     }
   }
-  componentWillUnmount = async () => await KeepAwake.deactivate();
+  componentWillUnmount = async () => {
+    await KeepAwake.deactivate();
+  }
   updateTransportIndex = (transportIndex) => this.setState({transportIndex})
   updateDlIndex = (dlIndex) => this.setState({dlIndex})
   watchID: ?number = null;
@@ -94,7 +94,7 @@ export default class Story extends Component {
             mime : 'application/zip',
             description : I18n.t("Story_downloaded","Story downloaded by BooksOnWall."),
             mediaScannable: true,
-            path : appDir + '/stories/'
+            path : appDir + '/stories/Story_'+ sid + '.zip'
         }
     })
     .fetch('POST', this.state.server + '/zip/' + sid)
@@ -142,22 +142,23 @@ export default class Story extends Component {
       await Geolocation.getCurrentPosition(
         position => {
           const initialPosition = position;
-          this.setState({fromLat: position.coords.latitude, fromLong: position.coords.longitude});
-          this.setState({initialPosition});
+          this.setState({
+            initialPosition: initialPosition,
+            fromLat: position.coords.latitude,
+            fromLong: position.coords.longitude});
         },
         error => Toast.showWithGravity(I18n.t("POSITION_UNKNOWN","GPS position unknown, Are you inside a building ? Please go outside."), Toast.LONG, Toast.TOP),
         { timeout: 10000, maximumAge: 1000, enableHighAccuracy: true},
       );
       this.watchID = await Geolocation.watchPosition(position => {
-        const lastPosition = position;
-        this.setState({lastPosition});
-        this.setState({fromLat: position.coords.latitude, fromLong: position.coords.longitude});
+
+        this.setState({LastPosition: position,fromLat: position.coords.latitude, fromLong: position.coords.longitude});
         let from = {
           "type": "Feature",
           "properties": {},
             "geometry": {
               "type": "Point",
-              "coordinates": [this.state.fromLong, this.state.fromLat]
+              "coordinates": [this.state.fromLat, this.state.fromLong]
             }
           };
           let to = {
@@ -165,11 +166,11 @@ export default class Story extends Component {
             "properties": {},
               "geometry": {
                 "type": "Point",
-                "coordinates": [this.state.toLong, this.state.toLat]
+                "coordinates": [this.state.toLat, this.state.fromLong]
               }
             };
           let units = I18n.t("kilometers","kilometers");
-          let dis = distance(from, to, units);
+          let dis = distance(from, to, "kilometers");
           console.log('from story distance:', dis);
           if (dis) {
             this.setState({distance: dis.toFixed(2)});
@@ -214,24 +215,36 @@ export default class Story extends Component {
             onPress: () => console.log('Cancel Pressed'),
             style: 'cancel',
           },
-          {text: I18n.t("Yes_destroy","Yes destroy it!"), onPress: () => console.log('OK Pressed')},
+          {text: I18n.t("Yes_destroy","Yes destroy it!"), onPress: () => this.destroyStory()},
         ],
-        {cancelable: false},
+        {cancelable: true},
       );
     } catch(e) {
       console.log(e);
     }
+  }
+  destroyStory = async () => {
+    try {
+      let sid = this.state.story.id;
+      let storyPath = this.state.appDir+'/stories/'+sid;
+      await RNFetchBlob.fs.unlink(storyPath).then(success => {
+        Toast.showWithGravity(I18n.t("Story deleted !"), Toast.LONG, Toast.TOP);
+        return this.props.navigation.goBack();
+      });
+    } catch(e) {
+      console.log(e.message);
+    }
 
   }
+  launchAR = () => this.props.navigation.navigate('ToAr', {screenProps: this.props.screenProps, story: this.state.story, index: 0})
   render() {
     const {theme, story, distance, transportIndex, dlIndex,  access_token, profile, granted, fromLat, fromLong, toLat, toLong } = this.state;
     const transportbuttons = [ I18n.t('Auto'),  I18n.t('Pedestrian'),  I18n.t('Bicycle')];
     const storyPlay = () => <Icon size={40} name='geopoint' color='#4D0101' onPress={() => this.launchStory()} />;
     const storyDelete = () => <Icon size={40} name='trash' color='#4D0101' onPress={() => this.deleteStory(story.id)} />;
     const storyInstall = () => <Icon size={40} name='download' color='#fff' onPress={() => this.downloadStory(story.id)} />;
-    const storyAr = () => <Icon size={40} name='play' color='#4D0101' onPress={() => navigate('ToAr', {screenProps: this.props.screenProps, story: story, index: 0})} />;
+    const storyAr = () => <Icon size={40} name='play' color='#4D0101' onPress={() => this.launchAR()} />;
     const dlbuttons = (story.isInstalled) ? [ { element: storyDelete }, { element: storyPlay }, { element: storyAr} ]: [ { element: storyInstall }];
-    const {navigate} = this.props.navigation;
     const themeSheet = StyleSheet.create({
       p: {
         fontFamily: theme.font3,
