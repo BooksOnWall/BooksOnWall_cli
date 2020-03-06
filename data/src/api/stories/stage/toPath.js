@@ -1,6 +1,6 @@
 import React, {Component} from 'react';
 import MapboxGL from '@react-native-mapbox-gl/maps';
-import {Alert, View, StyleSheet} from 'react-native';
+import {View, StyleSheet} from 'react-native';
 import {Button} from 'react-native-elements';
 import {lineString as makeLineString} from '@turf/helpers';
 
@@ -8,7 +8,6 @@ import RouteSimulator from './utils/RouteSimulator';
 import {directionsClient} from './MapboxClient';
 import sheet from './mapbox-gl/styles/sheet';
 
-import BaseExamplePropTypes from './mapbox-gl/common/BaseExamplePropTypes';
 import Page from './mapbox-gl/common/Page';
 import PulseCircleLayer from './mapbox-gl/common/PulseCircleLayer';
 
@@ -56,26 +55,8 @@ class ToPath extends Component {
     title: 'To Stage',
     headerShown: false
   };
-  static propTypes = {
-    ...BaseExamplePropTypes,
-  };
   constructor(props) {
     super(props);
-    Alert.alert(
-      'Story',
-      JSON.stringify(props.screenProps.story),
-      [
-        {text: 'Ask me later', onPress: () => console.log('Ask me later pressed')},
-        {
-          text: 'Cancel',
-          onPress: () => console.log('Cancel Pressed'),
-          style: 'cancel',
-        },
-        {text: 'OK', onPress: () => console.log('OK Pressed')},
-      ],
-      {cancelable: false},
-    );
-
     this.state = {
       prevLatLng: null,
       track: null,
