@@ -1,7 +1,7 @@
 import React, {Component} from 'react';
 import SafeAreaView from 'react-native-safe-area-view';
-import { PermissionsAndroid, Alert, Platform, ActivityIndicator, ScrollView, Animated, Image, StyleSheet, View, Text, I18nManager } from 'react-native';
-import { Header,Card, ListItem, ButtonGroup, Button, Icon, ThemeProvider } from 'react-native-elements';
+import { PermissionsAndroid, Alert, Platform, ActivityIndicator, ScrollView, Animated, Image, StyleSheet, View, Text, I18nManager, ImageBackground, TouchableOpacity } from 'react-native';
+import { Header, Card, ListItem, ButtonGroup, Button, ThemeProvider } from 'react-native-elements';
 import Geolocation from '@react-native-community/geolocation';
 import { MAPBOX_KEY  } from 'react-native-dotenv';
 import  distance from '@turf/distance';
@@ -11,6 +11,9 @@ import * as RNFS from 'react-native-fs';
 import Reactotron from 'reactotron-react-native';
 import KeepAwake from 'react-native-keep-awake';
 import I18n from "../../utils/i18n";
+import Icon from "../../utils/Icon";
+import { Banner } from '../../../assets/banner';
+import Toast from 'react-native-simple-toast';
 
 function humanFileSize(bytes, si) {
     var thresh = si ? 1000 : 1024;
@@ -35,13 +38,14 @@ export default class Story extends Component {
   };
   constructor(props) {
     super(props);
+    this.loadStories = this.props.loadStories;
     this.state = {
       server: this.props.screenProps.server,
       appName: this.props.screenProps.appName,
       appDir: this.props.screenProps.AppDir,
-      //photo: 'file://'+this.props.screenProps.AppDir+'/'+ this.props.navigation.getParam('story').id + '/stages/'+ this.props.navigation.getParam('story').stages[0].id + '/' + this.props.navigation.getParam('story').stages[0].photo[0].name,
       downloadProgress: 0,
       story: this.props.navigation.getParam('story'),
+      theme: this.props.navigation.getParam('story').theme,
       granted: Platform.OS === 'ios',
       transportIndex: 0,
       dlIndex: null,
@@ -53,15 +57,13 @@ export default class Story extends Component {
       fromLong: null,
       toLat: null ,
       toLong: null,
-      distance: null
+      distance: null,
     };
-    console.table(this.state.story);
     this.updateTransportIndex = this.updateTransportIndex.bind(this);
     this.updateDlIndex = this.updateDlIndex.bind(this);
     this.getCurrentLocation = this.getCurrentLocation.bind(this);
   }
   componentDidMount = async () => {
-
     if (!this.props.navigation.getParam('story') ) this.props.navigation.navigate('Stories');
     try {
       await KeepAwake.activate();
@@ -73,7 +75,9 @@ export default class Story extends Component {
       console.log(e);
     }
   }
-  componentWillUnmount = async () => await KeepAwake.deactivate();
+  componentWillUnmount = async () => {
+    await KeepAwake.deactivate();
+  }
   updateTransportIndex = (transportIndex) => this.setState({transportIndex})
   updateDlIndex = (dlIndex) => this.setState({dlIndex})
   watchID: ?number = null;
@@ -91,7 +95,7 @@ export default class Story extends Component {
             mime : 'application/zip',
             description : I18n.t("Story_downloaded","Story downloaded by BooksOnWall."),
             mediaScannable: true,
-            path : appDir
+            path : appDir + '/stories/Story_'+ sid + '.zip'
         }
     })
     .fetch('POST', this.state.server + '/zip/' + sid)
@@ -139,22 +143,23 @@ export default class Story extends Component {
       await Geolocation.getCurrentPosition(
         position => {
           const initialPosition = position;
-          this.setState({fromLat: position.coords.latitude, fromLong: position.coords.longitude});
-          this.setState({initialPosition});
+          this.setState({
+            initialPosition: initialPosition,
+            fromLat: position.coords.latitude,
+            fromLong: position.coords.longitude});
         },
-        error => Alert.alert('Error', JSON.stringify(error)),
+        error => Toast.showWithGravity(I18n.t("POSITION_UNKNOWN","GPS position unknown, Are you inside a building ? Please go outside."), Toast.LONG, Toast.TOP),
         { timeout: 10000, maximumAge: 1000, enableHighAccuracy: true},
       );
       this.watchID = await Geolocation.watchPosition(position => {
-        const lastPosition = position;
-        this.setState({lastPosition});
-        this.setState({fromLat: position.coords.latitude, fromLong: position.coords.longitude});
+
+        this.setState({LastPosition: position,fromLat: position.coords.latitude, fromLong: position.coords.longitude});
         let from = {
           "type": "Feature",
           "properties": {},
             "geometry": {
               "type": "Point",
-              "coordinates": [this.state.fromLong, this.state.fromLat]
+              "coordinates": [this.state.fromLat, this.state.fromLong]
             }
           };
           let to = {
@@ -162,17 +167,17 @@ export default class Story extends Component {
             "properties": {},
               "geometry": {
                 "type": "Point",
-                "coordinates": [this.state.toLong, this.state.toLat]
+                "coordinates": [this.state.toLat, this.state.fromLong]
               }
             };
           let units = I18n.t("kilometers","kilometers");
-          let dis = distance(from, to, units);
+          let dis = distance(from, to, "kilometers");
           console.log('from story distance:', dis);
           if (dis) {
             this.setState({distance: dis.toFixed(2)});
           };
       },
-      error => Alert.alert('Error', JSON.stringify(error)),
+      error => error => Toast.showWithGravity(I18n.t("POSITION_UNKNOWN","GPS position unknown, Are you inside a building ? Please go outside."), Toast.LONG, Toast.TOP),
       {timeout: 5000, maximumAge: 1000, enableHighAccuracy: true, distanceFilter: 1},
       );
     } catch(e) {
@@ -211,78 +216,241 @@ export default class Story extends Component {
             onPress: () => console.log('Cancel Pressed'),
             style: 'cancel',
           },
-          {text: I18n.t("Yes_destroy","Yes destroy it!"), onPress: () => console.log('OK Pressed')},
+          {text: I18n.t("Yes_destroy","Yes destroy it!"), onPress: () => this.destroyStory()},
         ],
-        {cancelable: false},
+        {cancelable: true},
       );
     } catch(e) {
       console.log(e);
     }
+  }
+  destroyStory = async () => {
+    try {
+      let sid = this.state.story.id;
+      let storyPath = this.state.appDir+'/stories/'+sid;
+      await RNFetchBlob.fs.unlink(storyPath).then(success => {
+        Toast.showWithGravity(I18n.t("Story deleted !"), Toast.LONG, Toast.TOP);
+        return this.props.navigation.goBack();
+      });
+    } catch(e) {
+      console.log(e.message);
+    }
 
   }
-
-  // storyPlay = () => <Text>Play</Text>
-  // storyDelete = () => <Text>Delete</Text>
-  // storyInstall = () => <Text>Install</Text>
+  launchAR = () => this.props.navigation.navigate('ToAr', {screenProps: this.props.screenProps, story: this.state.story, index: 0})
   render() {
-    const {story, distance, transportIndex, dlIndex,  access_token, profile, granted, fromLat, fromLong, toLat, toLong } = this.state;
+    const {theme, story, distance, transportIndex, dlIndex,  access_token, profile, granted, fromLat, fromLong, toLat, toLong } = this.state;
     const transportbuttons = [ I18n.t('Auto'),  I18n.t('Pedestrian'),  I18n.t('Bicycle')];
-    const storyPlay = () => <Icon raised name='play-circle' type='font-awesome' color='#f50' onPress={() => this.launchStory()} />;
-    const storyDelete = () => <Icon raised name='trash' type='font-awesome' color='#f50' onPress={() => this.deleteStory(story.id)} />;
-    const storyInstall = () => <Icon raised name='download' type='font-awesome' color='#f50' onPress={() => this.downloadStory(story.id)} />;
-    const storyAr = () => <Icon raised name='road' type='font-awesome' color='#f50' onPress={() => navigate('ToAr', {screenProps: this.props.screenProps, story: story, index: 0})} />;
+    const storyPlay = () => <Icon size={40} name='geopoint' color='white' onPress={() => this.launchStory()} />;
+    const storyDelete = () => <Icon size={40} name='trash' color='white' onPress={() => this.deleteStory(story.id)} />;
+    const storyInstall = () => <Icon size={40} name='download' color='white' onPress={() => this.downloadStory(story.id)} />;
+    const storyAr = () => <Icon size={40} name='play' color='white' onPress={() => this.launchAR()} />;
     const dlbuttons = (story.isInstalled) ? [ { element: storyDelete }, { element: storyPlay }, { element: storyAr} ]: [ { element: storyInstall }];
-    const {navigate} = this.props.navigation;
-
-    // if (!distance || this.state.Platform === 'web') {
-    //   return (
-    //     <View style={styles.loader}>
-    //       <Text style={styles.loader}>{'['+ fromLong +',' +fromLat+']  ['+toLong+', '+ toLat+ ']'}</Text>
-    //       <Text style={styles.loader}>Please wait while we get your GPS Position</Text>
-    //       <ActivityIndicator size="large" color="#0000ff" />
-    //     </View>
-    //   );
-    // }
-    return (
+    const themeSheet = StyleSheet.create({
+      header: {
+        flex: 1,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        borderWidth: 0,
+        backgroundColor: '#D8D8D8',
+        margin: 0,
+        padding: 0,
+      },
+      card: {
+        flex: 3,
+        flexDirection: 'column',
+        padding: 0,
+        margin: 0,
+        backgroundColor: 'transparent',
+      },
+      tile:{
+        backgroundColor: story.theme.color1,
+        flex: 1,
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignContent: 'center',
+        maxHeight: 100,
+      },
+      title: {
+        fontFamily: story.theme.font1,
+        fontSize: 16,
+        textAlign: 'center',
+        paddingTop: 0,
+        paddingBottom: 0,
+        letterSpacing: 1,
+        color: '#fff',
+        textShadowColor: 'rgba(0, 0, 0, 0.85)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 2,
+      },
+      sinopsys: {
+        flex: 1,
+        backgroundColor: '#C8C1B8',
+        fontFamily: story.theme.font2,
+        color: '#000',
+        paddingTop: 30,
+        paddingBottom: 30
+      },
+      credits: {
+        backgroundColor: story.theme.color2,
+        fontFamily: story.theme.font3,
+        padding: 26,
+        color: story.theme.color3,
+      },
+      subtitle: {
+        fontWeight: 'bold',
+        padding: 0,
+        marginTop: 0,
+        marginBottom: 0,
+        fontSize: 12,
+        textTransform: 'uppercase',
+        fontFamily: story.theme.font3,
+        color: story.theme.color3,
+      },
+      logo: {
+        color: '#9E1C00',
+        fontSize: 40,
+        textShadowColor: 'rgba(0, 0, 0, 0.35)',
+        textShadowOffset: {width: 1, height: 1},
+        textShadowRadius: 3,
+      },
+      nav: {
+        flex: 1,
+        justifyContent: 'center',
+        fontSize: 20,
+        backgroundColor: story.theme.color1,
+        padding: 0,
+        margin: 0,
+        textShadowColor: 'rgba(0, 0, 0, 0.85)', textShadowOffset: {width: -1, height: 1}, textShadowRadius: 2,
+        maxHeight: 55
+      },
+      NavButton: {
+          backgroundColor: story.theme.color1,
+          borderWidth: 0,
+          margin: 0,
+      },
+      NavContainer: {
+        flex: 1,
+        borderWidth: 0,
+        borderRadius: 0,
+        margin: 0,
+        padding: 0,
+        backgroundColor: story.theme.color1,
+      },
+      menssage: {
+        fontSize: 12,
+        color: '#000',
+        textAlign: 'center',
+        paddingTop: 5,
+        fontFamily: 'OpenSansCondensed-Light',
+      },
+      transport: {
+        flex: 1,
+        fontSize: 14,
+        backgroundColor: '#4B4F53',
+        borderWidth: 0,
+        borderColor: '#d2d2d2',
+        minHeight: 40,
+        maxHeight: 40,
+        margin: 0,
+        padding: 0
+      }
+    });
+    const creditsThemeSheet = StyleSheet.create({
+      p: {
+          fontSize: 14,
+          padding: 0,
+          lineHeight: 20,
+          letterSpacing: 0,
+          fontFamily: 'OpenSansCondensed-ligth',
+          color: story.theme.color3
+        },
+        b: {
+          fontFamily: 'OpenSansCondensed-Bold'},
+          container: {
+          flex: 1,
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          backgroundColor: '#D8D8D8',
+          padding: 0,
+        },
+      });
+    const sinopsysThemeSheet = StyleSheet.create({
+      p: {
+          fontSize: 16,
+          paddingTop: 25,
+          paddingBottom: 10,
+          paddingHorizontal:25,
+          lineHeight: 24,
+          letterSpacing: 0,
+          fontFamily: '',
+          color: '#111',
+          fontFamily: story.theme.font2,
+          textAlign: 'center',
+        },
+        b: {
+          fontFamily: 'OpenSansCondensed-Bold'
+        },
+        container: {
+          flex: 1,
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          backgroundColor: '#D8D8D8',
+          padding: 0,
+        },
+        i:{
+          fontSize: 24,
+          fontFamily: story.theme.font2
+        }
+      });
+      const Title = () => (
+        <View>
+        <Text style={themeSheet.title}>{story.title}</Text>
+        <Text style={styles.location}>{story.city + ' • ' + story.state}</Text>
+        </View>
+      );
+      return (
       <ThemeProvider>
         <SafeAreaView style={styles.container}>
+        <ImageBackground source={{uri: theme.banner.filePath}} imageStyle={{opacity: .6}} style={themeSheet.tile} >
           <Header
-            leftComponent={{ icon: 'menu', color: '#fff' }}
-            centerComponent={{ text: story.title, style: { color: '#fff' } }}
-            rightComponent={{ icon: 'home', color: '#fff' }}
-            />
-            <Card>
-              <ScrollView style={styles.sinopsys}>
-                <HTMLView
-                  value={story.sinopsys}
-                  stylesheet={styles}
-                />
+            style={styles.header}
+            containerStyle={styles.containerStyle}
+            leftComponent={<TouchableOpacity onPress={() => this.props.navigation.goBack()}><Button type="clear" onPress={() => this.props.navigation.goBack()} icon={{
+                name:"menu", size:38, color:"#4B4F53" }}></Button></TouchableOpacity>}
+            centerComponent={<Title style={styles.titleContainer}/>}
+          />
+          </ImageBackground>
+          <View style={styles.card} >
+              <ScrollView style={styles.scrollview}>
+
+                <View style={themeSheet.sinopsys} >
+                  <HTMLView value={story.sinopsys} stylesheet={sinopsysThemeSheet}/>
+                </View>
+
+                <View style={themeSheet.credits} >
+                  <Text h2 style={themeSheet.subtitle}>{I18n.t("credits", "Credits")}</Text>
+                  <HTMLView value={story.credits} stylesheet={creditsThemeSheet} />
+                </View>
+
               </ScrollView>
+
               {distance && (
                 <Text> {I18n.t("distance", "You are at {distance} km from the beginning of your story.")}</Text>
               )}
-              {story.isInstalled && (
-                <>
-                <Text style={styles.bold}>{I18n.t("Transportation","Please choose your mode of transportation and press Start Navigation.")}</Text>
-                <ButtonGroup
-                  onPress={this.updateTransportIndex}
-                  selectedIndex={transportIndex}
-                  buttons={transportbuttons}
-                  containerStyle={{height: 40}}
-                  disabled={[1, 2]}
-                  //disabled={true}
-                  />
-                </>
-              )}
-
+          </View>
+          <View style={themeSheet.nav}>
               <ButtonGroup
+                style={styles.menu}
+                containerStyle={themeSheet.NavContainer}
+                buttons={dlbuttons}
+                buttonStyle={themeSheet.NavButton}
                 onPress={this.updateDlIndex}
                 selectedIndex={dlIndex}
-                buttons={dlbuttons}
-                containerStyle={{height: 60}}
-
+                selectedButtonStyle={{backgroundColor: 'transparent'}}
+                innerBorderStyle={{color: 'rgba(0, 0, 0, 0.3)'}}
+                Component={TouchableOpacity}
+                selectedButtonStyle={{backgroundColor: 'transparent'}}
                 />
-            </Card>
+          </View>
         </SafeAreaView>
       </ThemeProvider>
     );
@@ -291,25 +459,78 @@ export default class Story extends Component {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "flex-start",
-    alignItems: "stretch",
-    backgroundColor: "whitesmoke"
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    backgroundColor: '#D8D8D8',
+    padding: 0,
+    margin: 0,
   },
-  sinopsys: {
-    minHeight: 300,
-    maxHeight: 300,
-    marginHorizontal: 0,
+  containerStyle: {
+    backgroundColor: '#C8C1B8',
+    justifyContent: 'space-around',
+    borderWidth: 0,
+    paddingTop: 25,
+    paddingBottom: 25,
+    borderWidth: 0
   },
-  scrollView: {
-    marginHorizontal: 0,
+  titleContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 0,
+    margin: 0,
   },
-  bold: {
-    fontWeight: 'bold'
+  header: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderWidth: 0,
+    margin: 0,
+    padding: 0,
+  },
+  card: {
+    flex: 3,
+    flexDirection: 'column',
+    padding: 0,
+    margin: 0,
+    borderWidth: 0,
+  },
+  location: {
+    flex: 1,
+    fontFamily: 'ATypewriterForMe',
+    fontSize: 11,
+    textAlign: 'center',
+    color: '#fff',
+    textShadowColor: 'rgba(0, 0, 0, 0.85)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 1
+  },
+  scrollview: {
+    flex: 2,
+    backgroundColor: '#D8D8D8',
   },
   loader: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "stretch",
-    backgroundColor: "whitesmoke"
+    justifyContent: 'center',
+    alignItems: 'stretch',
+    backgroundColor: 'whitesmoke',
+  },
+  logo: {
+    color: '#9E1C00',
+    fontSize: 40,
+    textShadowColor: 'rgba(0, 0, 0, 0.35)',
+    textShadowOffset: {width: 1, height: 1},
+    textShadowRadius: 3,
+  },
+  menssage: {
+    fontSize: 12,
+    color: '#000',
+    textAlign: 'center',
+    paddingTop: 5,
+    fontFamily: 'OpenSansCondensed-Light',
+  },
+  menu: {
+    flex: 1,
+    minHeight: 40,
+    margin: 0,
+    padding: 0,
   }
 });

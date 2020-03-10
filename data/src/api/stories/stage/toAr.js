@@ -1,11 +1,3 @@
-/**
- * Copyright (c) 2017-present, Viro, Inc.
- * All rights reserved.
- *
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree. An additional grant
- * of patent rights can be found in the PATENTS file in the same directory.
- */
 import React, { Component } from 'react';
 import {
   Platform,
@@ -16,10 +8,25 @@ import {
   PixelRatio,
   TouchableHighlight,
 } from 'react-native';
-
 import { ViroARSceneNavigator} from 'react-viro';
-import InitialARScene from './arScene';
+
 import KeepAwake from 'react-native-keep-awake';
+import SafeAreaView from 'react-native-safe-area-view';
+import { ButtonGroup } from 'react-native-elements';
+import Icon from "../../../utils/Icon";
+
+
+/*
+AR Scene type:
+#1 VIP aka Video inside Picture to detect
+#2 VAAP aka Video aside anchored picture
+#3 VAAMP aka Video anchored with multiple pictures
+#4 PORTAL aka Portal
+*/
+import VIP from '../../scenes/VipScene';
+import VAAMP from '../../scenes/VaampScene';
+import VAAP from '../../scenes/VaapScene';
+import PORTAL from '../../scenes/PortalScene';
 /*
  TODO: Insert your API key below unneeded since v.2.17
  */
@@ -42,11 +49,12 @@ export default class ToAR extends Component {
       appName: this.props.screenProps.appName,
       appDir: this.props.screenProps.AppDir,
       story: this.props.navigation.getParam('story'),
+      position: this.props.navigation.getParam('position'),
+      arIndex: -1,
       index: this.props.navigation.getParam('index'),
       stage: this.props.navigation.getParam('story').stages[this.props.navigation.getParam('index')],
       sharedProps : sharedProps
     }
-    console.table(this.state.stage);
   }
   static navigationOptions = {
     title: 'To Augmented Reality',
@@ -55,11 +63,15 @@ export default class ToAR extends Component {
   componentDidMount = async () => await KeepAwake.activate();
   componentWillUnmount = async () => {
     try {
+      await this.setState({ navigatorType : UNSET });
       await KeepAwake.deactivate();
-      this.setState({ navigatorType : UNSET });
     } catch(e) {
       console.log(e);
     }
+  }
+  reload = () => this.props.navigation.push('ToAr', {screenProps: this.props.screenProps, story: this.state.story, index: this.state.index} )
+  map = () => this.props.navigation.navigate('ToPath', {screenProps: this.props.screenProps, story: this.state.story, index: this.state.index} )
+  next = () => {
 
   }
   // Replace this function with the contents of _getVRNavigator() or _getARNavigator()
@@ -69,73 +81,56 @@ export default class ToAR extends Component {
       sharedProps: this.state.sharedProps,
       server: this.state.server,
       story: this.state.story,
+      stages: this.state.story.stages,
+      sceneType: this.state.stage.scene_type,
       index: this.state.index,
       pictures: this.state.stage.pictures,
       onZoneEnter: this.state.stage.onZoneEnter,
       onZoneLeave: this.state.stage.onZoneLeave,
       onPictureMatch: this.state.stage.onPictureMatch,
-      appDir: this.state.appDir
+      appDir: this.state.appDir,
     };
-    console.table(params);
+    const storyReload = () => <Icon size={40} name='reload-circle' color='#4D0101' onPress={() => this.reload()} />;
+    const storyMap = () => <Icon size={40} name='geopoint-circle' color='#4D0101' onPress={() => this.map()} />;
+    const storyNext = () => <Icon size={40} name='next-circle' color='#4D0101' onPress={() => this.next()} />;
+    const arButtons = [ { element: storyReload }, { element: storyMap }, { element: storyNext} ];
+    const arScene = {
+      'vip':  { scene: VIP },
+      'vaap':  { scene: VAAP },
+      'vaamp':  { scene: VAAMP },
+      'portal':  { scene: PORTAL}
+    };
+    let types = ['vip', 'vaap', 'vaamp', 'portal'];
+    let type = (this.state.stage.scene_type) ? types[this.state.stage.scene_type] : 'vip';
     return (
       // options shadowsEnabled={true} bloomEnabled={true} hdrEnabled={true} bugged on my LG Q6
       // ref={(component) => {this.nav = component}} do we need ref ?
-      <ViroARSceneNavigator hdrEnabled {...this.state.sharedProps} viroAppProps={params} initialScene={{ scene: InitialARScene }} />
+      <SafeAreaView style={styles.mainContainer}>
+        <ViroARSceneNavigator hdrEnabled {...this.state.sharedProps} viroAppProps={params} initialScene={arScene[type]} style={styles.viroContainer}/>
+        <ButtonGroup style={styles.menu}
+          buttonStyle={{ backgroundColor: 'transparent', borderWidth: 0, borderColor: '#4B4F53', margin: 0, minHeight: 50, maxHeight: 50}}
+          onPress={this.updateDlIndex}
+          selectedIndex={this.state.arIndex}
+          selectedButtonStyle= {{backgroundColor: '#750000'}}
+          buttons={arButtons}
+          containerStyle= {{flex: 1, borderWidth: 0, borderColor: '#4B4F53', minHeight: 50, maxHeight: 50, backgroundColor: 'transparent', borderRadius: 0, margin: 0, padding: 0}}
+          innerBorderStyle= {{ color: '#750000' }}
+          />
+      </SafeAreaView>
     );
   }
 }
 
-var localStyles = StyleSheet.create({
+var styles = StyleSheet.create({
+  mainContainer: {
+    flex : 1,
+    backgroundColor: "transparent",
+  },
+  menu: {
+    backgroundColor: "transparent",
+  },
   viroContainer :{
     flex : 1,
-    backgroundColor: "black",
-  },
-  outer : {
-    flex : 1,
-    flexDirection: 'row',
-    alignItems:'center',
-    backgroundColor: "black",
-  },
-  inner: {
-    flex : 1,
-    flexDirection: 'column',
-    alignItems:'center',
-    backgroundColor: "black",
-  },
-  titleText: {
-    paddingTop: 30,
-    paddingBottom: 20,
-    color:'#fff',
-    textAlign:'center',
-    fontSize : 25
-  },
-  buttonText: {
-    color:'#fff',
-    textAlign:'center',
-    fontSize : 20
-  },
-  buttons : {
-    height: 80,
-    width: 150,
-    paddingTop:20,
-    paddingBottom:20,
-    marginTop: 10,
-    marginBottom: 10,
-    backgroundColor:'#68a0cf',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#fff',
-  },
-  exitButton : {
-    height: 50,
-    width: 100,
-    paddingTop:10,
-    paddingBottom:10,
-    marginTop: 10,
-    marginBottom: 10,
-    backgroundColor:'#68a0cf',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#fff',
+    backgroundColor: "transparent",
   }
 });

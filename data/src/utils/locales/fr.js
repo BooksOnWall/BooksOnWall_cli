@@ -7,10 +7,12 @@ export default {
   reveal: "a tant de secrets à révéler",
   Enjoy: "Amusez vous !",
   Press: "Appuyer sur terminé pour commencer",
+  Bip: "ah!, n'oubliez pas, attention à la circulation! bip-bip!",
   kilometers: "kilometres",
   Stories: "Contes",
   Story_downloaded: "Conte téléchargé par BooksOnWall.",
   ACCESS_FINE_LOCATION: "BooksOnWall a besoin de la permission ACCESS_FINE_LOCATION",
+  POSITION_UNKNOWN: "Position GPS inconnue, Etes vous à l'interieur d'un immeuble ? Aller à l'exterieur s'il vous plait.",
   Delete_story: "Effacer le conte",
   Are_u_Sure: "Vous êtes sur de vouloir faire ça ?",
   Later: "Plus tard",
@@ -19,5 +21,6 @@ export default {
   Auto:"Auto",
   Pedestrian: "Pieton",
   Bicycle: "Bicyclette",
-  Transportation: "Choisissez votre mode de transport et appuyez sur Commencer."
+  Transportation: "Choisissez votre mode de transport et appuyez sur Commencer.",
+  credits: "Crédits" 
 };
