@@ -298,8 +298,13 @@ export default class Story extends Component {
       subtitle: {
         fontWeight: 'bold',
         padding: 0,
+<<<<<<< HEAD
         marginTop: 0,
         marginBottom: 0,
+=======
+        marginTop: 15,
+        marginBottom: 25,
+>>>>>>> 0c8010f7a17ece55434774a95ea7a25a979787fb
         fontSize: 12,
         textTransform: 'uppercase',
         fontFamily: story.theme.font3,
@@ -401,12 +406,15 @@ export default class Story extends Component {
           fontFamily: story.theme.font2
         }
       });
+<<<<<<< HEAD
       const Title = () => (
         <View>
         <Text style={themeSheet.title}>{story.title}</Text>
         <Text style={styles.location}>{story.city + ' • ' + story.state}</Text>
         </View>
       );
+=======
+>>>>>>> 0c8010f7a17ece55434774a95ea7a25a979787fb
       return (
       <ThemeProvider>
         <SafeAreaView style={styles.container}>
@@ -414,12 +422,31 @@ export default class Story extends Component {
           <Header
             style={styles.header}
             containerStyle={styles.containerStyle}
+<<<<<<< HEAD
             leftComponent={<TouchableOpacity onPress={() => this.props.navigation.goBack()}><Button type="clear" onPress={() => this.props.navigation.goBack()} icon={{
                 name:"menu", size:38, color:"#4B4F53" }}></Button></TouchableOpacity>}
             centerComponent={<Title style={styles.titleContainer}/>}
           />
           </ImageBackground>
           <View style={styles.card} >
+=======
+            leftComponent={<TouchableOpacity onPress={() => this.props.navigation.goBack()}><Button type="clear" onPress={() => this.props.navigation.goBack()} icon={
+              <Icon
+                name="menu"
+                size={38}
+                color="#4B4F53"
+              />
+            }></Button></TouchableOpacity>}
+            centerComponent={<Icon name='bow-logo' style={styles.logo}/>}
+          />
+          <View style={styles.card} >
+
+              <ImageBackground source={{uri: theme.banner.filePath}} imageStyle={{opacity: .6}} style={themeSheet.tile} >
+                <Text style={themeSheet.title}>{story.title}</Text>
+                <Text style={styles.location}>{story.city+' • '+story.state}</Text>
+              </ImageBackground>
+
+>>>>>>> 0c8010f7a17ece55434774a95ea7a25a979787fb
               <ScrollView style={styles.scrollview}>
 
                 <View style={themeSheet.sinopsys} >
@@ -473,6 +500,7 @@ const styles = StyleSheet.create({
     paddingBottom: 25,
     borderWidth: 0
   },
+<<<<<<< HEAD
   titleContainer: {
     flex: 1,
     flexDirection: 'row',
@@ -480,6 +508,8 @@ const styles = StyleSheet.create({
     padding: 0,
     margin: 0,
   },
+=======
+>>>>>>> 0c8010f7a17ece55434774a95ea7a25a979787fb
   header: {
     flex: 1,
     flexDirection: 'row',
