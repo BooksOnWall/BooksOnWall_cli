@@ -260,7 +260,6 @@ export default class Stories extends Component {
           </SafeAreaView>
       );
     }
-
     return (
       <ThemeProvider>
         <SafeAreaView style={styles.container}>
