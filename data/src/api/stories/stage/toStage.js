@@ -67,28 +67,30 @@ export default class ToStage extends Component<Props,$FlowFixMeState > {
         const lastPosition = position;
         this.setState({lastPosition});
         this.setState({fromLat: position.coords.latitude, fromLong: position.coords.longitude});
-        let from = {
-          "type": "Feature",
-          "properties": {},
-            "geometry": {
-              "type": "Point",
-              "coordinates": [this.state.fromLong, this.state.fromLat]
-            }
-          };
-          let to = {
-            "type": "Feature",
-            "properties": {},
-              "geometry": {
-                "type": "Point",
-                "coordinates": [this.state.toLong, this.state.toLat]
-              }
-            };
-          let units = "kilometers";
-          let dis = distance(from, to, units);
-          Reactotron.log('distance', dis);
-          if (dis) {
-            this.setState({distance: dis});
-          };
+        return this.launchNavigation();
+        // let from = {
+        //   "type": "Feature",
+        //   "properties": {},
+        //     "geometry": {
+        //       "type": "Point",
+        //       "coordinates": [this.state.fromLong, this.state.fromLat]
+        //     }
+        //   };
+        //   let to = {
+        //     "type": "Feature",
+        //     "properties": {},
+        //       "geometry": {
+        //         "type": "Point",
+        //         "coordinates": [this.state.toLong, this.state.toLat]
+        //       }
+        //     };
+        //
+        //   let units = "kilometers";
+        //   let dis = distance(from, to, units);
+        //   console.log('distance', dis);
+        //   if (dis) {
+        //     this.setState({distance: dis});
+        //   };
       },
       error => Toast.showWithGravity(I18n.t("POSITION_UNKNOWN","GPS position unknown, Are you inside a building ? Please go outside."), Toast.LONG, Toast.TOP),
       {timeout: 5000, maximumAge: 1000, enableHighAccuracy: true, distanceFilter: 1},
@@ -97,6 +99,17 @@ export default class ToStage extends Component<Props,$FlowFixMeState > {
     } catch(e) {
       console.log(e);
     }
+  }
+  lauchNavigation = () => {
+    const {fromLat, fromLong, toLat, toLong} = this.state;
+    NativeModules.MapboxNavigation.navigate(
+        fromLat,
+        fromLong,
+        toLat,
+        toLong,
+        // profile,
+        // access_token
+      );
   }
   componentWillUnmount = async () => {
     try {

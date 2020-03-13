@@ -1,7 +1,9 @@
 import React, {Component} from 'react';
 import SafeAreaView from 'react-native-safe-area-view';
 import { Dimensions, PermissionsAndroid, Alert, Platform, ActivityIndicator, ScrollView, Animated, Image, StyleSheet, View, Text, I18nManager, ImageBackground, TouchableOpacity } from 'react-native';
-import { Header, Card, ListItem, ButtonGroup, Button, ThemeProvider } from 'react-native-elements';
+import { Header, Card, ListItem, ButtonGroup, Button, ThemeProvider, Icon, registerCustomIconType } from 'react-native-elements';
+import NavigationView from "./stage/NavigationView";
+import { NativeModules } from "react-native";
 import Geolocation from '@react-native-community/geolocation';
 import { MAPBOX_KEY  } from 'react-native-dotenv';
 import  distance from '@turf/distance';
@@ -11,7 +13,7 @@ import * as RNFS from 'react-native-fs';
 import Reactotron from 'reactotron-react-native';
 import KeepAwake from 'react-native-keep-awake';
 import I18n from "../../utils/i18n";
-import Icon from "../../utils/Icon";
+import IconSet from "../../utils/Icon";
 import { Banner } from '../../../assets/banner';
 import Toast from 'react-native-simple-toast';
 
@@ -21,7 +23,7 @@ const IS_IPHONE_X = SCREEN_HEIGHT === 812 || SCREEN_HEIGHT === 896;
 const STATUS_BAR_HEIGHT = Platform.OS === 'ios' ? (IS_IPHONE_X ? 44 : 20) : 0;
 const HEADER_HEIGHT = Platform.OS === 'ios' ? (IS_IPHONE_X ? 88 : 64) : 64;
 const NAV_BAR_HEIGHT = HEADER_HEIGHT - STATUS_BAR_HEIGHT;
-
+registerCustomIconType('booksonwall', IconSet);
 function humanFileSize(bytes, si) {
     var thresh = si ? 1000 : 1024;
     if(Math.abs(bytes) < thresh) {
@@ -46,6 +48,8 @@ export default class Story extends Component {
   constructor(props) {
     super(props);
     this.loadStories = this.props.loadStories;
+    let coordinates = this.props.navigation.getParam('story').stages[0].geometry.coordinates;
+    console.log(coordinates);
     this.state = {
       server: this.props.screenProps.server,
       appName: this.props.screenProps.appName,
@@ -63,8 +67,8 @@ export default class Story extends Component {
       lastPosition: null,
       fromLat: null,
       fromLong: null,
-      toLat: null ,
-      toLong: null,
+      toLat: coordinates[1],
+      toLong: coordinates[0],
       distance: null,
     };
     this.updateTransportIndex = this.updateTransportIndex.bind(this);
@@ -167,7 +171,7 @@ export default class Story extends Component {
           "properties": {},
             "geometry": {
               "type": "Point",
-              "coordinates": [this.state.fromLat, this.state.fromLong]
+              "coordinates": [this.state.fromLong,this.state.fromLat ]
             }
           };
           let to = {
@@ -175,12 +179,11 @@ export default class Story extends Component {
             "properties": {},
               "geometry": {
                 "type": "Point",
-                "coordinates": [this.state.toLat, this.state.fromLong]
+                "coordinates": [this.state.toLong,this.state.toLat ]
               }
             };
           let units = I18n.t("kilometers","kilometers");
           let dis = distance(from, to, "kilometers");
-          console.log('from story distance:', dis);
           if (dis) {
             this.setState({distance: dis.toFixed(2)});
           };
@@ -211,7 +214,17 @@ export default class Story extends Component {
     }
   }
 
-  launchStory = () => this.props.navigation.navigate('ToStage', {'story': this.state.story, 'position': 1, state: this.state })
+  launchNavigation = () => {
+    const {story,fromLat, fromLong, toLat, toLong} = this.state;
+    NativeModules.MapboxNavigation.navigate(
+      fromLat,
+      fromLong,
+      toLat,
+      toLong,
+      // profile,
+      // access_token
+    );
+  }
   deleteStory = async (sid) => {
     try {
       await Alert.alert(
@@ -248,99 +261,56 @@ export default class Story extends Component {
   renderContent = () => {
     const {theme, story, distance, transportIndex, dlIndex,  access_token, profile, granted, fromLat, fromLong, toLat, toLong } = this.state;
     const transportbuttons = [ I18n.t('Auto'),  I18n.t('Pedestrian'),  I18n.t('Bicycle')];
-    const storyPlay = () => <Icon size={40} name='geopoint' color='white' onPress={() => this.launchStory()} />;
-    const storyDelete = () => <Icon size={40} name='trash' color='white' onPress={() => this.deleteStory(story.id)} />;
-    const storyInstall = () => <Icon size={40} name='download' color='white' onPress={() => this.downloadStory(story.id)} />;
-    const storyAr = () => <Icon size={40} name='play' color='white' onPress={() => this.launchAR()} />;
-    const dlbuttons = (story.isInstalled) ? [ { element: storyDelete }, { element: storyPlay }, { element: storyAr} ]: [ { element: storyInstall }];
+    const storyNavigate = () => (distance) ? <Button rounded={true} type='clear' onPress={() => this.launchNavigation()} icon={{ name: 'geopoint', type: 'booksonwall', size: 40, color: 'white'}} /> : null;
+    const storyDelete = () => <Button rounded={true} raised={true} onPress={() => this.deleteStory(story.id)} icon={{ name: 'trash', type: 'booksonwall', size: 40, color: 'white'}} />;
+    const storyInstall = () => <Button rounded={true} type='clear' onPress={() => this.downloadStory(story.id)}  icon={{ name: 'download', type: 'booksonwall', size: 40, color: 'white'}} title='Download'/>;
+    const storyAr = () => (distance) ? <Button rounded={true} type='clear' onPress={() => this.launchAR()} icon={{ name: 'play', type: 'booksonwall', size: 40, color: 'white'}} />: null;
+    const dlbuttons = (story.isInstalled) ? [ { element: storyDelete }, { element: storyNavigate }, { element: storyAr} ]: [ { element: storyInstall }];
     const themeSheet = StyleSheet.create({
-      header: {
-        flex: 1,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        borderWidth: 0,
-        backgroundColor: '#D8D8D8',
-        margin: 0,
-        padding: 0,
-      },
-      card: {
-        flex: 3,
-        flexDirection: 'column',
-        padding: 0,
-        margin: 0,
-        backgroundColor: 'transparent',
-      },
-      tile:{
-        backgroundColor: story.theme.color1,
-        flex: 1,
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignContent: 'center',
-        maxHeight: 100,
-      },
       title: {
         fontFamily: story.theme.font1,
-        fontSize: 16,
-        textAlign: 'center',
-        paddingTop: 0,
-        paddingBottom: 0,
-        letterSpacing: 1,
         color: '#fff',
-        textShadowColor: 'rgba(0, 0, 0, 0.85)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 2,
       },
-      sinopsys: {
-        flex: 1,
-        backgroundColor: '#C8C1B8',
-        fontFamily: story.theme.font2,
-        color: '#000',
-        paddingTop: 30,
-        paddingBottom: 30
+      card:{
+        backgroundColor: story.theme.color1,
       },
       credits: {
         backgroundColor: story.theme.color2,
-        fontFamily: story.theme.font3,
-        padding: 26,
+        fontFamily: 'OpenSansCondensed-Light',
+        paddingTop: 60,
+        paddingBottom: 60,
+        paddingHorizontal: 26,
         color: story.theme.color3,
+      },
+      sinopsys: {
+        paddingTop: 40,
+        paddingBottom: 50,
+        paddingHorizontal: 26,
+        backgroundColor: '#D8D8D8',
       },
       subtitle: {
         fontWeight: 'bold',
         padding: 0,
         marginTop: 0,
-        marginBottom: 0,
+        marginBottom: 30,
         fontSize: 12,
         textTransform: 'uppercase',
-        fontFamily: story.theme.font3,
+        fontFamily: 'OpenSansCondensed-bold',
         color: story.theme.color3,
-      },
-      logo: {
-        color: '#9E1C00',
-        fontSize: 40,
-        textShadowColor: 'rgba(0, 0, 0, 0.35)',
-        textShadowOffset: {width: 1, height: 1},
-        textShadowRadius: 3,
-      },
-      nav: {
-        flex: 1,
-        justifyContent: 'center',
-        fontSize: 20,
-        backgroundColor: story.theme.color1,
-        padding: 0,
-        margin: 0,
-        textShadowColor: 'rgba(0, 0, 0, 0.85)', textShadowOffset: {width: -1, height: 1}, textShadowRadius: 2,
-        maxHeight: 55
       },
       NavButton: {
           backgroundColor: story.theme.color1,
           borderWidth: 0,
           margin: 0,
       },
-      NavContainer: {
+      BtnNavContainer: {
         flex: 1,
         borderWidth: 0,
         borderRadius: 0,
-        margin: 0,
-        padding: 0,
+        marginTop: 0,
+        padding: 20,
         backgroundColor: story.theme.color1,
+        height: 50
       },
       menssage: {
         fontSize: 12,
@@ -359,17 +329,26 @@ export default class Story extends Component {
         maxHeight: 40,
         margin: 0,
         padding: 0
+      },
+      p: { fontFamily: 'OpenSansCondensed-Light',
+      },
+      b: { fontFamily: 'OpenSansCondensed-Bold'
+      },
+      menu: {
+        flex: 1,
+        margin: 0,
+        padding: 0,
+        backgroundColor: story.theme.color1,
       }
-    });
+      });
 
     const creditsThemeSheet = StyleSheet.create({
       p: {
-          fontSize: 14,
-          padding: 0,
+          fontSize: 16,
           lineHeight: 20,
           letterSpacing: 0,
-          fontFamily: 'OpenSansCondensed-ligth',
-          color: story.theme.color3
+          fontFamily: 'OpenSansCondensed-Light',
+          color: story.theme.color3,
         },
         b: {
           fontFamily: 'OpenSansCondensed-Bold'},
@@ -380,19 +359,18 @@ export default class Story extends Component {
           backgroundColor: '#D8D8D8',
           padding: 0,
         },
+        strong: {
+          fontFamily: 'OpenSansCondensed-Bold',
+        }
       });
     const sinopsysThemeSheet = StyleSheet.create({
       p: {
           fontSize: 16,
-          paddingTop: 25,
-          paddingBottom: 10,
-          paddingHorizontal:25,
           lineHeight: 24,
           letterSpacing: 0,
           fontFamily: '',
           color: '#111',
-          fontFamily: story.theme.font2,
-          textAlign: 'center',
+          fontFamily: 'OpenSansCondensed-Light',
         },
         b: {
           fontFamily: 'OpenSansCondensed-Bold'
@@ -411,33 +389,31 @@ export default class Story extends Component {
       });
     return (
       <>
-      <View style={styles.card} >
+      <View style={themeSheet.card} >
 
-            <View style={themeSheet.sinopsys} >
-              <HTMLView value={story.sinopsys} stylesheet={sinopsysThemeSheet}/>
-            </View>
+            {distance && (
+              <Text> {I18n.t("distance", "You are at ")}{distance}{I18n.t(" km from the beginning of your story.")}</Text>
+            )}
+            <ButtonGroup
+              style={themeSheet.menu}
+              containerStyle={themeSheet.BtnNavContainer}
+              buttons={dlbuttons}
+              buttonStyle={themeSheet.NavButton}
+              onPress={this.updateDlIndex}
+              selectedIndex={dlIndex}
+              selectedButtonStyle={{backgroundColor: 'transparent'}}
+              innerBorderStyle={{color: 'rgba(0, 0, 0, 0.3)'}}
+              Component={TouchableOpacity}
+              selectedButtonStyle={{backgroundColor: 'transparent'}}
+              />
+              <View style={themeSheet.sinopsys} >
+                <HTMLView value={story.sinopsys} stylesheet={sinopsysThemeSheet}/>
+              </View>
 
-            <View style={themeSheet.credits} >
+              <View style={themeSheet.credits} >
               <Text h2 style={themeSheet.subtitle}>{I18n.t("credits", "Credits")}</Text>
               <HTMLView value={story.credits} stylesheet={creditsThemeSheet} />
             </View>
-
-
-          {distance && (
-            <Text> {I18n.t("distance", "You are at {distance} km from the beginning of your story.")}</Text>
-          )}
-          <ButtonGroup
-            style={styles.menu}
-            containerStyle={themeSheet.NavContainer}
-            buttons={dlbuttons}
-            buttonStyle={themeSheet.NavButton}
-            onPress={this.updateDlIndex}
-            selectedIndex={dlIndex}
-            selectedButtonStyle={{backgroundColor: 'transparent'}}
-            innerBorderStyle={{color: 'rgba(0, 0, 0, 0.3)'}}
-            Component={TouchableOpacity}
-            selectedButtonStyle={{backgroundColor: 'transparent'}}
-            />
       </View>
       </>
     )
@@ -447,11 +423,8 @@ export default class Story extends Component {
   <View style={styles.navContainer}>
     <View style={styles.statusBar} />
     <View style={styles.navBar}>
-      <TouchableOpacity style={styles.iconLeft} onPress={() => {}}>
-        <Icon name="home" size={25} color="#fff" />
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.iconRight} onPress={() => {}}>
-        <Icon name="home" size={25} color="#fff" />
+      <TouchableOpacity style={styles.iconLeft} onPress={() => this.props.navigation.goBack()}>
+        <Button onPress={() => this.props.navigation.goBack()} type='clear' rounded raised underlayColor='#FFFFFF' icon={{name:'menu', size:25, color:'#fff', type:'booksonwall'}} />
       </TouchableOpacity>
     </View>
   </View>
@@ -461,19 +434,25 @@ export default class Story extends Component {
       const {theme, themeSheet, story} = this.state;
 
       const Title = () => (
-        <View>
-        <Text style={{fontFamily: story.theme.font1}}>{story.title}</Text>
-        <Text style={styles.location}>{this.state.story.city + ' • ' + this.state.story.state}</Text>
+        <View style={styles.titleStyle}>
+          <Text style={{  fontSize: 24,
+            letterSpacing: 1,
+            color: "#fff",
+            textShadowColor: 'rgba(0, 0, 0, 0.85)',
+            textShadowOffset: {width: 1, height: 1},
+            textShadowRadius: 2,
+            fontFamily: story.theme.font1}} >{story.title}</Text>
+          <Text style={styles.location}>{this.state.story.city + ' • ' + this.state.story.state}</Text>
         </View>
       );
       return (
       <ThemeProvider>
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} forceInset={{ top: 'always', bottom: 'always' }}>
         <ReactNativeParallaxHeader
           headerMinHeight={HEADER_HEIGHT}
           headerMaxHeight={250}
           extraScrollHeight={20}
-          navbarColor="#3498db"
+          navbarColor={story.theme.color1}
           title={<Title/>}
           titleStyle={styles.titleStyle}
           backgroundImage={{uri: theme.banner.filePath}}
@@ -497,8 +476,6 @@ export default class Story extends Component {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    flexDirection: 'column',
-    justifyContent: 'space-between',
     backgroundColor: '#D8D8D8',
     padding: 0,
     margin: 0,
@@ -529,64 +506,23 @@ const styles = StyleSheet.create({
     paddingBottom: 25,
     borderWidth: 0
   },
-  titleContainer: {
+  titleStyle: {
     flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 0,
-    margin: 0,
-  },
-  header: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderWidth: 0,
-    margin: 0,
-    padding: 0,
+    flexDirection:'column',
+    alignItems:'stretch',
+    alignContent: 'stretch',
+    justifyContent:'center'
   },
   card: {
-    flex: 3,
-    flexDirection: 'column',
     padding: 0,
     margin: 0,
     borderWidth: 0,
   },
   location: {
-    flex: 1,
     fontFamily: 'ATypewriterForMe',
     fontSize: 11,
     textAlign: 'center',
     color: '#fff',
-    textShadowColor: 'rgba(0, 0, 0, 0.85)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 1
-  },
-  scrollview: {
-    flex: 2,
-    backgroundColor: '#D8D8D8',
-  },
-  loader: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'stretch',
-    backgroundColor: 'whitesmoke',
-  },
-  logo: {
-    color: '#9E1C00',
-    fontSize: 40,
-    textShadowColor: 'rgba(0, 0, 0, 0.35)',
-    textShadowOffset: {width: 1, height: 1},
-    textShadowRadius: 3,
-  },
-  menssage: {
-    fontSize: 12,
-    color: '#000',
-    textAlign: 'center',
-    paddingTop: 5,
-    fontFamily: 'OpenSansCondensed-Light',
-  },
-  menu: {
-    flex: 1,
-    minHeight: 40,
-    margin: 0,
-    padding: 0,
+    textShadowColor: 'rgba(0, 0, 0, 0.85)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 1,
   }
 });
