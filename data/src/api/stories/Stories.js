@@ -59,7 +59,7 @@ ListStories = (props) => {
  });
 
   return (
-    <TouchableOpacity onPress={() => props.navigate('Story', {story: story})}>
+    <TouchableOpacity onPress={() => props.navigate('Story', {story: story, storiesUpdate: props.storiesUpdate})}>
       <View >
       {
         stories.map((story, i) => (
@@ -73,7 +73,7 @@ ListStories = (props) => {
                 titleStyle={{ color: 'white', fontFamily: story.theme.font1, fontSize: 26, textAlign: 'center', letterSpacing: 1, margin: 0, paddingBottom:0, paddingLeft: 35, textShadowColor: 'rgba(0, 0, 0, 0.8)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 2}}
                 subtitle={story.city+' • '+story.state}
                 subtitleStyle={{ color: 'white', fontFamily: "ATypewriterForMe", fontSize: 14, textAlign: 'center', letterSpacing: 0, margin: 0, paddingLeft:35, textShadowColor: 'rgba(0, 0, 0, 0.8)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 1 }}
-                onPress={() => props.navigate('Story', {story: story})}
+                onPress={() => props.navigate('Story', {story: story, storiesUpdate: props.storiesUpdate})}
                 bottomDivider
                 chevron
               />
@@ -148,13 +148,13 @@ export default class Stories extends Component {
     NetInfo.fetch().then(state => {
       // console.warn("Connection type", state.type);
       // console.warn("Is connected?", state.isConnected);
-      !state.isConnected ? Toast.showWithGravity('Error: No internet connection!', Toast.LONG, Toast.TOP) : '';
+      !state.isConnected ? Toast.showWithGravity(I18n.t("ERROR_NO_INTERNET","Error: No internet connection!"), Toast.LONG, Toast.TOP) : '';
     });
   }
   loadStories = async () => {
     try {
       await this.networkCheck();
-      Toast.showWithGravity('Loading', Toast.SHORT, Toast.TOP);
+      Toast.showWithGravity(I18n.t("Loading","Loading"), Toast.SHORT, Toast.TOP);
       await fetch(this.state.storiesURL, {
         method: 'get',
         headers: {'Access-Control-Allow-Origin': '*', credentials: 'same-origin', 'Content-Type':'application/json'}
@@ -167,7 +167,7 @@ export default class Stories extends Component {
           if(data) {
             return this.storeStories(data.stories);
           } else {
-            Toast.showWithGravity('No Data received from the server', Toast.LONG, Toast.TOP);
+            Toast.showWithGravity(I18n.t("NO_DATA","No Data received from the server"), Toast.LONG, Toast.TOP);
           }
       })
       .catch((error) => {
@@ -188,7 +188,7 @@ export default class Stories extends Component {
           if (exists === false) {
               RNFetchBlob.fs.mkdir(bannerPath).then((result) => {
                 // banner folder created successfully
-                Toast.showWithGravity('Creating banners', Toast.SHORT, Toast.TOP);
+                Toast.showWithGravity(I18n.t("Creating_banners","Creating banners ..."), Toast.SHORT, Toast.TOP);
               }).catch((err) => {
                 console.log('mkdir err', err)
               });
@@ -228,7 +228,7 @@ export default class Stories extends Component {
       // store stories list in Stories.json file
       await RNFS.writeFile(this.state.appDir+'/Stories.json', JSON.stringify(sts), 'utf8')
       .then((success) => {
-        Toast.showWithGravity('Update complete', Toast.SHORT, Toast.TOP);
+        Toast.showWithGravity(I18n.t("Update_complete","Update complete"), Toast.SHORT, Toast.TOP);
       })
       .catch((err) => {
         console.log(err.message);
@@ -269,8 +269,8 @@ export default class Stories extends Component {
             centerComponent={<Icon name='bow-logo' style={styles.logo}/>}
             rightComponent={<TouchableOpacity onPress={() => this.storiesUpdate()}><Button style={styles.reload} type="clear" loading={this.state.loading} onPress={() => this.storiesUpdate()} icon={
               <Icon
-                name="reload-circle"
-                size={38}
+                name="reload"
+                size={44}
                 color="#ece2d6"
               />
             }></Button></TouchableOpacity>}
@@ -278,7 +278,7 @@ export default class Stories extends Component {
           <Card style={styles.card} containerStyle={{padding: 0, margin: 0, borderWidth: 0, backgroundColor: 'transparent'}}>
           <ScrollView refreshControl={<RefreshControl progressBackgroundColor={'#8C1B8'} progressViewOffset={25} refreshing={this.state.reloadLoading} onRefresh={this.storiesUpdate} /> } style={styles.scrollView} onScrollToTop={() => this.storiesUpdate()}>
             <View style={styles.wrapList} >
-              <ListStories loadStories={this.loadStories} storeStories={this.storeStories} stories={stories} navigate={navigate} />
+              <ListStories storiesUpdate={this.storiesUpdate} loadStories={this.loadStories} storeStories={this.storeStories} stories={stories} navigate={navigate} />
               </View>
           </ScrollView>
           </Card>
@@ -336,6 +336,6 @@ const styles = StyleSheet.create({
     textShadowRadius: 3,
   },
   reload: {
-    color: '#9b948e',paddingTop: 12,paddingBottom: 10,  paddingHorizontal: 7
+    color: '#9b948e', borderRadius: 30
   }
 });

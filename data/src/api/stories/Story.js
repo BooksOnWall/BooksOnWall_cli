@@ -1,7 +1,7 @@
 import React, {Component} from 'react';
 import SafeAreaView from 'react-native-safe-area-view';
 import { Dimensions, PermissionsAndroid, Alert, Platform, ActivityIndicator, ScrollView, Animated, Image, StyleSheet, View, Text, I18nManager, ImageBackground, TouchableOpacity } from 'react-native';
-import { Header, Card, ListItem, ButtonGroup, Button, ThemeProvider, Icon, registerCustomIconType } from 'react-native-elements';
+import { Header, Card, ListItem, Button, ThemeProvider, Icon, registerCustomIconType } from 'react-native-elements';
 import NavigationView from "./stage/NavigationView";
 import { NativeModules } from "react-native";
 import Geolocation from '@react-native-community/geolocation';
@@ -16,14 +16,16 @@ import I18n from "../../utils/i18n";
 import IconSet from "../../utils/Icon";
 import { Banner } from '../../../assets/banner';
 import Toast from 'react-native-simple-toast';
-
 import ReactNativeParallaxHeader from 'react-native-parallax-header';
+import {unzip} from 'react-native-zip-archive';
+
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 const IS_IPHONE_X = SCREEN_HEIGHT === 812 || SCREEN_HEIGHT === 896;
-const STATUS_BAR_HEIGHT = Platform.OS === 'ios' ? (IS_IPHONE_X ? 44 : 20) : 0;
+const STATUS_BAR_HEIGHT = Platform.OS === 'ios' ? (IS_IPHONE_X ? 44 : 24) : 0;
 const HEADER_HEIGHT = Platform.OS === 'ios' ? (IS_IPHONE_X ? 88 : 64) : 64;
 const NAV_BAR_HEIGHT = HEADER_HEIGHT - STATUS_BAR_HEIGHT;
 registerCustomIconType('booksonwall', IconSet);
+
 function humanFileSize(bytes, si) {
     var thresh = si ? 1000 : 1024;
     if(Math.abs(bytes) < thresh) {
@@ -39,7 +41,6 @@ function humanFileSize(bytes, si) {
     } while(Math.abs(bytes) >= thresh && u < units.length - 1);
     return bytes.toFixed(1)+' '+units[u];
 }
-
 export default class Story extends Component {
   static navigationOptions = {
     title: 'Story',
@@ -49,7 +50,6 @@ export default class Story extends Component {
     super(props);
     this.loadStories = this.props.loadStories;
     let coordinates = this.props.navigation.getParam('story').stages[0].geometry.coordinates;
-    console.log(coordinates);
     this.state = {
       server: this.props.screenProps.server,
       appName: this.props.screenProps.appName,
@@ -60,7 +60,7 @@ export default class Story extends Component {
       granted: Platform.OS === 'ios',
       transportIndex: 0,
       dlIndex: null,
-      access_token: MAPBOX_KEY,
+      dlLoading: false,
       profile: 'mapbox/walking',
       themeSheet: null,
       initialPosition: null,
@@ -94,6 +94,10 @@ export default class Story extends Component {
   updateDlIndex = (dlIndex) => this.setState({dlIndex})
   watchID: ?number = null;
   downloadStory = (sid) => {
+    // add loading in download story button
+    this.setState({dlLoading: true});
+    // Toast message starting download
+    Toast.showWithGravity(I18n.t("Start_downloading","Start Downloading."), Toast.SHORT, Toast.TOP);
     const appDir = this.state.appDir;
     RNFetchBlob
     .config({
@@ -119,35 +123,72 @@ export default class Story extends Component {
       // the path of downloaded file
       //const p = resp.path(); android manager can't get the downloaded path
       this.setState({downloadProgress:0});
-      let path_name = appDir+'/'+'Story_'+ sid + '.zip'
-
+      let path_name = appDir+'/'+'stories/Story_'+ sid + '.zip'
+      console.log(path_name);
+      //TOAST message download complete
+      Toast.showWithGravity(I18n.t("Download_complete","Download complete."), Toast.SHORT, Toast.TOP);
+      this.setState({dlLoading: false});
       return this.installStory(sid, path_name);
     });
   }
   installStory = (sid, path) => {
-  //   RNFS.readDir(RNFS.MainBundlePath) // On Android, use "RNFS.DocumentDirectoryPath" (MainBundlePath is not defined)
-  // .then((result) => {
-  //   console.log('GOT RESULT', result);
-  //
-  //   // stat the first file
-  //   return Promise.all([RNFS.stat(result[0].path), result[0].path]);
-  // })
-  // .then((statResult) => {
-  //   if (statResult[0].isFile()) {
-  //     // if we have a file, read it
-  //     return RNFS.readFile(statResult[1], 'utf8');
-  //   }
-  //
-  //   return 'no file';
-  // })
-  // .then((contents) => {
-  //   // log the file contents
-  //   console.log('content:', contents);
-  // })
-  // .catch((err) => {
-  //   console.log(err.message, err.code);
-  // });
-    return true;
+    // Toast message installing story
+    Toast.showWithGravity(I18n.t("Installing_story","Installing story."), Toast.SHORT, Toast.TOP);
+    // get downloaded path (in download directory) and target path (in appDir/stories)
+    const targetPath = this.state.appDir+'/stories/';
+    const sourcePath = path;
+    const charset = 'UTF-8';
+    const storyExists = targetPath+sid;
+    // if story exist and that we are in update mode
+    // Delete story first
+    RNFetchBlob.fs.exists(storyExists)
+    .then((exist) => {
+        console.log(`file ${exist ? '' : 'not'} exists`);
+        if (exist) {
+          RNFetchBlob.fs.unlink(storyExists)
+          .then(() => {
+              console.log(storyExists+' deleted !');
+            })
+            .catch((err) => { console.log(err); })
+        }
+    })
+    .catch((err) => { console.log(err); });
+    //unzip story
+    unzip(sourcePath, targetPath, charset)
+    .then((path) => {
+      console.log(`unzip completed at ${path}`);
+      //remove zip file
+      RNFetchBlob.fs.unlink(sourcePath)
+      .then(() => {
+          // TOAST message installation complete :
+          Toast.showWithGravity(I18n.t("Installation_complete","Installation complete."), Toast.SHORT, Toast.TOP);
+          // recheck if story is well installed and display buttons
+          return this.storyCheck();
+        })
+        .catch((err) => { console.log(err); })
+    })
+    .catch((error) => {
+      console.log(error)
+    });
+  }
+  storyCheck = async () => {
+    let story = this.state.story;
+    try {
+        story.isInstalled = await this.isInstalled(story.id);
+        this.setState({story: story});
+    } catch(e) {
+      console.log(e);
+    }
+  }
+  isInstalled = async (sid) => {
+    try {
+      return await RNFS.exists(this.state.appDir + '/stories/' + sid)
+        .then( (exists) => {
+            return exists;
+        });
+    } catch(e) {
+      console.log(e);
+    }
   }
   getCurrentLocation = async () => {
     try {
@@ -207,7 +248,7 @@ export default class Story extends Component {
       if (granted === PermissionsAndroid.RESULTS.GRANTED) {
         this.setState({ granted: true });
       } else {
-        Reactotron.log("ACCESS_FINE_LOCATION permission denied");
+        console.log("ACCESS_FINE_LOCATION permission denied");
       }
     } catch (err) {
       console.warn(err);
@@ -250,8 +291,8 @@ export default class Story extends Component {
       let sid = this.state.story.id;
       let storyPath = this.state.appDir+'/stories/'+sid;
       await RNFetchBlob.fs.unlink(storyPath).then(success => {
-        Toast.showWithGravity(I18n.t("Story deleted !"), Toast.LONG, Toast.TOP);
-        return this.props.navigation.goBack();
+        Toast.showWithGravity(I18n.t("Story_deleted","Story deleted !"), Toast.LONG, Toast.TOP);
+        return this.storyCheck();
       });
     } catch(e) {
       console.log(e.message);
@@ -261,11 +302,6 @@ export default class Story extends Component {
   renderContent = () => {
     const {theme, story, distance, transportIndex, dlIndex,  access_token, profile, granted, fromLat, fromLong, toLat, toLong } = this.state;
     const transportbuttons = [ I18n.t('Auto'),  I18n.t('Pedestrian'),  I18n.t('Bicycle')];
-    const storyNavigate = () => (distance) ? <Button rounded={true} type='clear' onPress={() => this.launchNavigation()} icon={{ name: 'geopoint', type: 'booksonwall', size: 40, color: 'white'}} /> : null;
-    const storyDelete = () => <Button rounded={true} raised={true} onPress={() => this.deleteStory(story.id)} icon={{ name: 'trash', type: 'booksonwall', size: 40, color: 'white'}} />;
-    const storyInstall = () => <Button rounded={true} type='clear' onPress={() => this.downloadStory(story.id)}  icon={{ name: 'download', type: 'booksonwall', size: 40, color: 'white'}} title='Download'/>;
-    const storyAr = () => (distance) ? <Button rounded={true} type='clear' onPress={() => this.launchAR()} icon={{ name: 'play', type: 'booksonwall', size: 40, color: 'white'}} />: null;
-    const dlbuttons = (story.isInstalled) ? [ { element: storyDelete }, { element: storyNavigate }, { element: storyAr} ]: [ { element: storyInstall }];
     const themeSheet = StyleSheet.create({
       title: {
         fontFamily: story.theme.font1,
@@ -299,9 +335,9 @@ export default class Story extends Component {
         color: story.theme.color3,
       },
       NavButton: {
-          backgroundColor: story.theme.color1,
-          borderWidth: 0,
-          margin: 0,
+        backgroundColor: story.theme.color1,
+        borderWidth: 0,
+        margin: 0,
       },
       BtnNavContainer: {
         flex: 1,
@@ -312,12 +348,20 @@ export default class Story extends Component {
         backgroundColor: story.theme.color1,
         height: 50
       },
-      menssage: {
+      distance: {
+        color: '#FFF',
+        fontWeight: 'bold',
+        fontSize: 16,
+        textAlign: 'center',
+        paddingTop: 5,
+        fontFamily: 'OpenSansCondensed-Light'
+      },
+      message: {
         fontSize: 12,
         color: '#000',
         textAlign: 'center',
         paddingTop: 5,
-        fontFamily: 'OpenSansCondensed-Light',
+        fontFamily: 'OpenSansCondensed-Light'
       },
       transport: {
         flex: 1,
@@ -339,7 +383,9 @@ export default class Story extends Component {
         margin: 0,
         padding: 0,
         backgroundColor: story.theme.color1,
-      }
+      },
+      nav: { flex: 1, justifyContent: 'center', alignItems: 'flex-start', flexWrap: 'wrap-reverse', flexDirection: 'row', paddingHorizontal: 4, paddingVertical: 6 },
+      button: { marginHorizontal: 1, backgroundColor: 'rgba(0, 0, 0, 0.10)'}
       });
 
     const creditsThemeSheet = StyleSheet.create({
@@ -387,25 +433,33 @@ export default class Story extends Component {
           fontFamily: story.theme.font2
         }
       });
+      const ButtonGroup = () => {
+        return (
+          <View style={themeSheet.nav}>
+          <TouchableOpacity style={{flex:1, flexGrow: 1,}} onPress={() => this.deleteStory(story.id)} >
+            <Button buttonStyle={themeSheet.button} onPress={() => this.deleteStory(story.id)} icon={{name: 'trash', type:'booksonwall', size: 40, color: 'white'}}/>
+          </TouchableOpacity>
+          {distance && (
+          <TouchableOpacity style={{flex:1, flexGrow: 1,}} onPress={() => this.launchNavigation()}>
+            <Button buttonStyle={themeSheet.button} icon={{name: 'route',  type:'booksonwall', size: 40, color: 'white'}} onPress={() => this.launchNavigation()} />
+          </TouchableOpacity>
+          )}
+
+          <TouchableOpacity style={{flex:1, flexGrow: 1,}} onPress={() => this.launchAR()} >
+            <Button buttonStyle={themeSheet.button}  icon={{name: 'play', type:'booksonwall', size: 40, color: 'white'}} onPress={() => this.launchAR()}  />
+          </TouchableOpacity>
+          </View>
+        );
+      };
     return (
       <>
       <View style={themeSheet.card} >
 
             {distance && (
-              <Text> {I18n.t("distance", "You are at ")}{distance}{I18n.t(" km from the beginning of your story.")}</Text>
+              <Text style={themeSheet.distance}> {I18n.t("Distance_to_beginning", "Distance to the beginning of the story ")}: {distance} {I18n.t("Kilometers","kilometers")}</Text>
             )}
-            <ButtonGroup
-              style={themeSheet.menu}
-              containerStyle={themeSheet.BtnNavContainer}
-              buttons={dlbuttons}
-              buttonStyle={themeSheet.NavButton}
-              onPress={this.updateDlIndex}
-              selectedIndex={dlIndex}
-              selectedButtonStyle={{backgroundColor: 'transparent'}}
-              innerBorderStyle={{color: 'rgba(0, 0, 0, 0.3)'}}
-              Component={TouchableOpacity}
-              selectedButtonStyle={{backgroundColor: 'transparent'}}
-              />
+            {(story.isInstalled) ? <ButtonGroup /> :  <Button loading={this.state.dlLoading} rounded={true} type='clear' onPress={() => this.downloadStory(story.id)}  icon={{ name: 'download', type: 'booksonwall', size: 30, color: 'white'}} title='Download' titleStyle={{color: 'white'}}/> }
+
               <View style={themeSheet.sinopsys} >
                 <HTMLView value={story.sinopsys} stylesheet={sinopsysThemeSheet}/>
               </View>
@@ -424,7 +478,7 @@ export default class Story extends Component {
     <View style={styles.statusBar} />
     <View style={styles.navBar}>
       <TouchableOpacity style={styles.iconLeft} onPress={() => this.props.navigation.goBack()}>
-        <Button onPress={() => this.props.navigation.goBack()} type='clear' rounded raised underlayColor='#FFFFFF' icon={{name:'menu', size:25, color:'#fff', type:'booksonwall'}} />
+        <Button onPress={() => this.props.navigation.goBack()} type='clear' rounded raised underlayColor='#FFFFFF' icon={{name:'left-arrow', size:35, color:'#fff', type:'booksonwall'}} />
       </TouchableOpacity>
     </View>
   </View>
@@ -435,7 +489,8 @@ export default class Story extends Component {
 
       const Title = () => (
         <View style={styles.titleStyle}>
-          <Text style={{  fontSize: 24,
+          <Text style={{
+            fontSize: 26,
             letterSpacing: 1,
             color: "#fff",
             textShadowColor: 'rgba(0, 0, 0, 0.85)',
@@ -462,10 +517,6 @@ export default class Story extends Component {
           containerStyle={styles.container}
           contentContainerStyle={styles.contentContainer}
           innerContainerStyle={styles.container}
-          scrollViewProps={{
-            onScrollBeginDrag: () => console.log('onScrollBeginDrag'),
-            onScrollEndDrag: () => console.log('onScrollEndDrag'),
-          }}
       />
 
         </SafeAreaView>
