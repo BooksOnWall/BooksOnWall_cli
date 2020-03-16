@@ -425,11 +425,31 @@ yarn add react-native-fs@2.13.2 2> >(grep -v warning 1>&2) && react-native link 
 ## simple toast popup lib
 yarn add react-native-simple-toast 2> >(grep -v warning 1>&2) && react-native link react-native-simple-toast
 ## to unzip the story.zip
-echo -e "\033[1;31m Warning react-native-zip-archive@4.1.5 not installed
-  because it won't compile yet:
-  https://github.com/mockingbot/react-native-zip-archive/issues/180 "
 
-#yarn add react-native-zip-archive@4.1.5 && react-native link react-native-zip-archive
+########
+##  react-native-zip-archive compilation need to add ext parameters
+##  to android/build.gradle
+##  before buildScript {}
+##  ext {
+##   buildToolsVersion = "28.0.3"
+##   minSdkVersion = 16
+##   compileSdkVersion = 28
+##   targetSdkVersion = 28
+##   supportLibVersion = "28.0.3"
+## }
+##  see: https://github.com/mockingbot/react-native-zip-archive/issues/180#issuecomment-598510562
+########
+echo -e "\033[1;32m Installing react-native-zip archive \033[0m"
+sed -i "2i   ext {" android/build.gradle
+sed -i "3i     buildToolsVersion = \"28.0.3\"" android/build.gradle
+sed -i "4i     minSdkVersion = 16" android/build.gradle
+sed -i "50i     compileSdkVersion = 28" android/build.gradle
+sed -i "6i     targetSdkVersion = 28" android/build.gradle
+sed -i "7i     targetSdkVersion = 28" android/build.gradle
+sed -i "8i     supportLibVersion = \"28.0.3\"" android/build.gradle
+sed -i "9i   }" android/build.gradle
+
+yarn add react-native-zip-archive@4.1.5 && react-native link react-native-zip-archive
 #yarn add extract-zip
 
 echo -e "\033[1;32m  Installing react easy packages \033[0m"
@@ -459,13 +479,9 @@ echo -e "\033[1;32m Adding netinfo to check connectivity \033[0m"
 yarn add @react-native-community/netinfo@^3.0.0 2> >(grep -v warning 1>&2)
 react-native link @react-native-community/netinfo
 
-echo -e "\033[1;32m Adding Sound and Video player and keep-awake  \033[0m"
+echo -e "\033[1;32m Adding  keep-awake  \033[0m"
 yarn add react-native-keep-awake 2> >(grep -v warning 1>&2)
 react-native link react-native-keep-awake
-#yarn add react-native-sound 2> >(grep -v warning 1>&2)
-#react-native link react-native-sound
-#yarn add react-native-video@^4.0.0 2> >(grep -v warning 1>&2)
-#react-native link react-native-video
 
 echo -e "\033[1;32m Adding Andoid X compatibility \033[0m"
 # Adding jetifier to rewrite package to facilitate migration to AndroidX
