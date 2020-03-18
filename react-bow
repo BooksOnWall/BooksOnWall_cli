@@ -425,7 +425,7 @@ yarn add react-native-fs@2.13.2 2> >(grep -v warning 1>&2) && react-native link 
 ## simple toast popup lib
 yarn add react-native-simple-toast 2> >(grep -v warning 1>&2) && react-native link react-native-simple-toast
 ## to unzip the story.zip
-
+yarn add react-native-device-info 2> >(grep -v warning 1>&2) && react-native link react-native-device-info
 ########
 ##  react-native-zip-archive compilation need to add ext parameters
 ##  to android/build.gradle
