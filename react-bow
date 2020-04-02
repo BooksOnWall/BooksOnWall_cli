@@ -425,7 +425,11 @@ yarn add react-native-fs@2.13.2 2> >(grep -v warning 1>&2) && react-native link 
 ## simple toast popup lib
 yarn add react-native-simple-toast 2> >(grep -v warning 1>&2) && react-native link react-native-simple-toast
 ## to unzip the story.zip
+# added to identify models and tablet
 yarn add react-native-device-info 2> >(grep -v warning 1>&2) && react-native link react-native-device-info
+# added to get orientation modification
+yarn add react-native-orientation 2> >(grep -v warning 1>&2) && react-native link react-native-orientation
+
 ########
 ##  react-native-zip-archive compilation need to add ext parameters
 ##  to android/build.gradle
@@ -453,7 +457,7 @@ yarn add react-native-zip-archive@4.1.5 && react-native link react-native-zip-ar
 #yarn add extract-zip
 
 echo -e "\033[1;32m  Installing react easy packages \033[0m"
-yarn add prop-types lodash react-dom react-native-app-intro-slider react-navigation react-navigation-transitions react-navigation-stack react-navigation-tabs react-native-htmlview react-native-elements react-native-awesome-alerts react-native-safe-area-view react-native-parallax-header 2> >(grep -v warning 1>&2)
+yarn add prop-types lodash react-dom react-native-app-intro-slider react-navigation react-navigation-transitions react-navigation-stack react-navigation-tabs react-native-drawer react-native-htmlview react-native-elements react-native-awesome-alerts react-native-safe-area-view react-native-parallax-header 2> >(grep -v warning 1>&2)
 
 echo -e "\033[1;32m  Adding internationalization \033[0m"
 yarn add react-native-localize 2> >(grep -v warning 1>&2) && react-native link react-native-localize

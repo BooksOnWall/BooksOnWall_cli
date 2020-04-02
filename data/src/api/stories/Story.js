@@ -48,15 +48,16 @@ export default class Story extends Component {
   };
   constructor(props) {
     super(props);
+
     this.loadStories = this.props.loadStories;
-    let coordinates = this.props.navigation.getParam('story').stages[0].geometry.coordinates;
+    let coordinates = (this.props.story) ? this.props.story.stages[0].geometry.coordinates :this.props.navigation.getParam('story').stages[0].geometry.coordinates;
     this.state = {
-      server: this.props.screenProps.server,
-      appName: this.props.screenProps.appName,
-      appDir: this.props.screenProps.AppDir,
+      server: (this.props.state) ? this.props.state.server : this.props.screenProps.server,
+      appName: (this.props.state) ? this.props.state.appName : this.props.screenProps.appName,
+      appDir: (this.props.state) ? this.props.state.appDir : this.props.screenProps.AppDir,
       downloadProgress: 0,
-      story: this.props.navigation.getParam('story'),
-      theme: this.props.navigation.getParam('story').theme,
+      story: (this.props.story) ? this.props.story : this.props.navigation.getParam('story'),
+      theme: (this.props.story && this.props.story.theme) ? this.props.story.theme: this.props.navigation.getParam('story').theme,
       granted: Platform.OS === 'ios',
       transportIndex: 0,
       dlIndex: null,
@@ -76,15 +77,20 @@ export default class Story extends Component {
     this.getCurrentLocation = this.getCurrentLocation.bind(this);
   }
   componentDidMount = async () => {
-    if (!this.props.navigation.getParam('story') ) this.props.navigation.navigate('Stories');
     try {
       await KeepAwake.activate();
       if (!this.state.granted) {
         await this.requestFineLocationPermission();
       }
       await this.getCurrentLocation();
+      (this.props.stopRefresh) ? this.props.stopRefresh(): null ;
     } catch(e) {
       console.log(e);
+    }
+  }
+  componentDidUpdate(prevProps, prevState) {
+    if (this.props.story && prevProps.story !== this.state.story) {
+      this.setState({story: this.props.story});
     }
   }
   componentWillUnmount = async () => {
@@ -387,7 +393,6 @@ export default class Story extends Component {
       nav: { flex: 1, justifyContent: 'center', alignItems: 'flex-start', flexWrap: 'wrap-reverse', flexDirection: 'row', paddingHorizontal: 4, paddingVertical: 6 },
       button: { marginHorizontal: 1, backgroundColor: 'rgba(0, 0, 0, 0.10)'}
       });
-
     const creditsThemeSheet = StyleSheet.create({
       p: {
           fontSize: 16,
@@ -458,7 +463,7 @@ export default class Story extends Component {
             {distance && (
               <Text style={themeSheet.distance}> {I18n.t("Distance_to_beginning", "Distance to the beginning of the story ")}: {distance} {I18n.t("Kilometers","kilometers")}</Text>
             )}
-            {(story.isInstalled) ? <ButtonGroup /> :  <Button loading={this.state.dlLoading} rounded={true} type='clear' onPress={() => this.downloadStory(story.id)}  icon={{ name: 'download', type: 'booksonwall', size: 30, color: 'white'}} title='Download' titleStyle={{color: 'white'}}/> }
+            {(story.isInstalled) ? <ButtonGroup /> : <TouchableOpacity style={{flex:1, flexGrow: 1, padding: 6}} onPress={() => this.downloadStory(story.id)}><Button buttonStyle={themeSheet.button}  loading={this.state.dlLoading} rounded={true} type='clear' onPress={() => this.downloadStory(story.id)}  icon={{ name: 'download', type: 'booksonwall', size: 40, color: 'white'}} title='Download' titleStyle={{color: 'white'}}/></TouchableOpacity> }
 
               <View style={themeSheet.sinopsys} >
                 <HTMLView value={story.sinopsys} stylesheet={sinopsysThemeSheet}/>
@@ -471,14 +476,13 @@ export default class Story extends Component {
       </View>
       </>
     )
-
   }
   renderNavBar = () => (
   <View style={styles.navContainer}>
     <View style={styles.statusBar} />
     <View style={styles.navBar}>
       <TouchableOpacity style={styles.iconLeft} onPress={() => this.props.navigation.goBack()}>
-        <Button onPress={() => this.props.navigation.goBack()} type='clear' rounded raised underlayColor='#FFFFFF' icon={{name:'left-arrow', size:35, color:'#fff', type:'booksonwall'}} />
+        <Button onPress={() => this.props.navigation.goBack()} type='clear' underlayColor='#FFFFFF' iconContainerStyle={{ marginLeft: -4}} icon={{name:'left-arrow', size:35, color:'#fff', type:'booksonwall'}} />
       </TouchableOpacity>
     </View>
   </View>
@@ -575,5 +579,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#fff',
     textShadowColor: 'rgba(0, 0, 0, 0.85)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 1,
+  },
+  iconLeft: {
+    width: 45,
+    height: 45,
+    backgroundColor: 'rgba(0, 0, 0, .12)',
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 0
   }
 });
