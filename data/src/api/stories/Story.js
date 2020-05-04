@@ -16,6 +16,8 @@ import I18n from "../../utils/i18n";
 import IconSet from "../../utils/Icon";
 import { Banner } from '../../../assets/banner';
 import Toast from 'react-native-simple-toast';
+import MapboxGL from '@react-native-mapbox-gl/maps';
+import {lineString as makeLineString, bbox} from '@turf/turf';
 import ReactNativeParallaxHeader from 'react-native-parallax-header';
 import {unzip} from 'react-native-zip-archive';
 
@@ -51,6 +53,13 @@ export default class Story extends Component {
 
     this.loadStories = this.props.loadStories;
     let coordinates = (this.props.story) ? this.props.story.stages[0].geometry.coordinates :this.props.navigation.getParam('story').stages[0].geometry.coordinates;
+    const stages = (this.props.story) ? this.props.story.stages : this.props.navigation.getParam('story').stages;
+    const storyPoints = stages.map((stage, i) => {
+      return stage.geometry.coordinates;
+    });
+    console.log(storyPoints);
+    var line = makeLineString(storyPoints);
+    var mbbox = bbox(line);
     this.state = {
       server: (this.props.state) ? this.props.state.server : this.props.screenProps.server,
       appName: (this.props.state) ? this.props.state.appName : this.props.screenProps.appName,
@@ -65,7 +74,9 @@ export default class Story extends Component {
       profile: 'mapbox/walking',
       themeSheet: null,
       initialPosition: null,
+      mbbox: mbbox,
       lastPosition: null,
+      styleURL: MapboxGL.StyleURL.Dark,
       fromLat: null,
       fromLong: null,
       toLat: coordinates[1],
@@ -169,6 +180,7 @@ export default class Story extends Component {
           // TOAST message installation complete :
           Toast.showWithGravity(I18n.t("Installation_complete","Installation complete."), Toast.SHORT, Toast.TOP);
           // recheck if story is well installed and display buttons
+          this.offlineSave();
           return this.storyCheck();
         })
         .catch((err) => { console.log(err); })
@@ -176,6 +188,30 @@ export default class Story extends Component {
     .catch((error) => {
       console.log(error)
     });
+  }
+  offlineSave = async () => {
+    try {
+      Toast.showWithGravity(I18n.t("Start_download_map","Start map download"), Toast.SHORT, Toast.TOP);
+
+      const progressListener = (offlineRegion, status) => console.log(offlineRegion, status);
+      const errorListener = (offlineRegion, err) => console.log(offlineRegion, err);
+      const box= this.state.mbbox;
+      const name = 'story'+this.state.story.id;
+      // check if offline db still exist
+      const offlinePack = await MapboxGL.offlineManager.getPack(name);
+      if(offlinePack) await MapboxGL.offlineManager.deletePack(name);
+      await MapboxGL.offlineManager.createPack({
+        name: name,
+        styleURL: this.state.styleURL,
+        minZoom: 14,
+        maxZoom: 20,
+        bounds: [[box[0], box[1]], [box[2], box[3]]]
+      }, progressListener, errorListener);
+      Toast.showWithGravity(I18n.t("End_download_map","End map download"), Toast.SHORT, Toast.TOP);
+      return progressListener;
+    } catch(e) {
+      console.log(e);
+    }
   }
   storyCheck = async () => {
     let story = this.state.story;
@@ -318,7 +354,7 @@ export default class Story extends Component {
       },
       credits: {
         backgroundColor: story.theme.color2,
-        fontFamily: 'OpenSansCondensed-Light',
+        fontFamily: 'Roboto-Regular',
         paddingTop: 60,
         paddingBottom: 60,
         paddingHorizontal: 26,
@@ -327,7 +363,7 @@ export default class Story extends Component {
       sinopsys: {
         paddingTop: 40,
         paddingBottom: 50,
-        paddingHorizontal: 26,
+        paddingHorizontal: 32,
         backgroundColor: '#D8D8D8',
       },
       subtitle: {
@@ -337,7 +373,7 @@ export default class Story extends Component {
         marginBottom: 30,
         fontSize: 12,
         textTransform: 'uppercase',
-        fontFamily: 'OpenSansCondensed-bold',
+        fontFamily: 'Roboto-bold',
         color: story.theme.color3,
       },
       NavButton: {
@@ -360,14 +396,14 @@ export default class Story extends Component {
         fontSize: 16,
         textAlign: 'center',
         paddingTop: 5,
-        fontFamily: 'OpenSansCondensed-Light'
+        fontFamily: 'Roboto-Regular'
       },
       message: {
         fontSize: 12,
         color: '#000',
         textAlign: 'center',
         paddingTop: 5,
-        fontFamily: 'OpenSansCondensed-Light'
+        fontFamily: 'Roboto-Regular'
       },
       transport: {
         flex: 1,
@@ -380,9 +416,9 @@ export default class Story extends Component {
         margin: 0,
         padding: 0
       },
-      p: { fontFamily: 'OpenSansCondensed-Light',
+      p: { fontFamily: 'Roboto-Light',
       },
-      b: { fontFamily: 'OpenSansCondensed-Bold'
+      b: { fontFamily: 'Roboto-bold'
       },
       menu: {
         flex: 1,
@@ -398,11 +434,11 @@ export default class Story extends Component {
           fontSize: 16,
           lineHeight: 20,
           letterSpacing: 0,
-          fontFamily: 'OpenSansCondensed-Light',
+          fontFamily: 'Roboto-Regular',
           color: story.theme.color3,
         },
         b: {
-          fontFamily: 'OpenSansCondensed-Bold'},
+          fontFamily: 'Roboto-bold'},
           container: {
           flex: 1,
           flexDirection: 'column',
@@ -411,20 +447,20 @@ export default class Story extends Component {
           padding: 0,
         },
         strong: {
-          fontFamily: 'OpenSansCondensed-Bold',
+          fontFamily: 'Roboto-bold',
         }
       });
     const sinopsysThemeSheet = StyleSheet.create({
       p: {
-          fontSize: 16,
-          lineHeight: 24,
+          fontSize: 18,
+          lineHeight: 26,
           letterSpacing: 0,
           fontFamily: '',
           color: '#111',
-          fontFamily: 'OpenSansCondensed-Light',
+          fontFamily: 'RobotoCondensed-Light',
         },
         b: {
-          fontFamily: 'OpenSansCondensed-Bold'
+          fontFamily: 'Roboto-bold'
         },
         container: {
           flex: 1,
@@ -442,16 +478,16 @@ export default class Story extends Component {
         return (
           <View style={themeSheet.nav}>
           <TouchableOpacity style={{flex:1, flexGrow: 1,}} onPress={() => this.deleteStory(story.id)} >
-            <Button buttonStyle={themeSheet.button} onPress={() => this.deleteStory(story.id)} icon={{name: 'trash', type:'booksonwall', size: 40, color: 'white'}}/>
+            <Button buttonStyle={themeSheet.button} onPress={() => this.deleteStory(story.id)} icon={{name: 'trash', type:'booksonwall', size: 24, color: 'white'}}/>
           </TouchableOpacity>
           {distance && (
           <TouchableOpacity style={{flex:1, flexGrow: 1,}} onPress={() => this.launchNavigation()}>
-            <Button buttonStyle={themeSheet.button} icon={{name: 'route',  type:'booksonwall', size: 40, color: 'white'}} onPress={() => this.launchNavigation()} />
+            <Button buttonStyle={themeSheet.button} icon={{name: 'route',  type:'booksonwall', size: 24, color: 'white'}} onPress={() => this.launchNavigation()} />
           </TouchableOpacity>
           )}
 
-          <TouchableOpacity style={{flex:1, flexGrow: 1,}} onPress={() => this.launchAR()} >
-            <Button buttonStyle={themeSheet.button}  icon={{name: 'play', type:'booksonwall', size: 40, color: 'white'}} onPress={() => this.launchAR()}  />
+          <TouchableOpacity style={{flex:1, flexGrow: 1,}} onPress={() => this.storyMap()} >
+            <Button buttonStyle={themeSheet.button}  icon={{name: 'play', type:'booksonwall', size: 24, color: 'white'}} onPress={() => this.storyMap()}  />
           </TouchableOpacity>
           </View>
         );
@@ -463,7 +499,7 @@ export default class Story extends Component {
             {distance && (
               <Text style={themeSheet.distance}> {I18n.t("Distance_to_beginning", "Distance to the beginning of the story ")}: {distance} {I18n.t("Kilometers","kilometers")}</Text>
             )}
-            {(story.isInstalled) ? <ButtonGroup /> : <TouchableOpacity style={{flex:1, flexGrow: 1, padding: 6}} onPress={() => this.downloadStory(story.id)}><Button buttonStyle={themeSheet.button}  loading={this.state.dlLoading} rounded={true} type='clear' onPress={() => this.downloadStory(story.id)}  icon={{ name: 'download', type: 'booksonwall', size: 40, color: 'white'}} title='Download' titleStyle={{color: 'white'}}/></TouchableOpacity> }
+            {(story.isInstalled) ? <ButtonGroup /> : <TouchableOpacity style={{flex:1, flexGrow: 1, padding: 6}} onPress={() => this.downloadStory(story.id)}><Button buttonStyle={themeSheet.button}  loading={this.state.dlLoading}  rounded={true} type='clear' onPress={() => this.downloadStory(story.id)}  icon={{ name: 'download', type: 'booksonwall', size: 20, color: 'white'}} title='Download' titleStyle={{color: 'white'}}/></TouchableOpacity> }
 
               <View style={themeSheet.sinopsys} >
                 <HTMLView value={story.sinopsys} stylesheet={sinopsysThemeSheet}/>
@@ -482,11 +518,12 @@ export default class Story extends Component {
     <View style={styles.statusBar} />
     <View style={styles.navBar}>
       <TouchableOpacity style={styles.iconLeft} onPress={() => this.props.navigation.goBack()}>
-        <Button onPress={() => this.props.navigation.goBack()} type='clear' underlayColor='#FFFFFF' iconContainerStyle={{ marginLeft: -4}} icon={{name:'left-arrow', size:35, color:'#fff', type:'booksonwall'}} />
+        <Button onPress={() => this.props.navigation.goBack()} type='clear' underlayColor='#FFFFFF' iconContainerStyle={{ marginLeft: 2}} icon={{name:'left-arrow', size:24, color:'#fff', type:'booksonwall'}} />
       </TouchableOpacity>
     </View>
   </View>
 )
+  storyMap = () => this.props.navigation.navigate('StoryMap', {screenProps: this.props.screenProps, story: this.state.story, index: 0})
   launchAR = () => this.props.navigation.navigate('ToAr', {screenProps: this.props.screenProps, story: this.state.story, index: 0})
   render() {
       const {theme, themeSheet, story} = this.state;
