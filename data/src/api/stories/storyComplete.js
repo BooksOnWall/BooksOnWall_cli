@@ -20,6 +20,8 @@ import MapboxGL from '@react-native-mapbox-gl/maps';
 import {lineString as makeLineString, bbox} from '@turf/turf';
 import ReactNativeParallaxHeader from 'react-native-parallax-header';
 import {unzip} from 'react-native-zip-archive';
+// import audio lib
+import Sound from 'react-native-sound';
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 const IS_IPHONE_X = SCREEN_HEIGHT === 812 || SCREEN_HEIGHT === 896;
@@ -43,9 +45,9 @@ function humanFileSize(bytes, si) {
     } while(Math.abs(bytes) >= thresh && u < units.length - 1);
     return bytes.toFixed(1)+' '+units[u];
 }
-export default class Story extends Component {
+export default class StoryComplete extends Component {
   static navigationOptions = {
-    title: 'Story',
+    title: 'Story Complete',
     headerShown: false
   };
   constructor(props) {
@@ -57,21 +59,24 @@ export default class Story extends Component {
     const storyPoints = stages.map((stage, i) => {
       return stage.geometry.coordinates;
     });
+
     var line = makeLineString(storyPoints);
     var mbbox = bbox(line);
+    console.log(this.props.screenProps.AppDir);
+    const storyDir = (this.props.state) ? this.props.state.appDir+'/stories/' : this.props.screenProps.AppDir +'/stories/';
     this.state = {
       server: (this.props.state) ? this.props.state.server : this.props.screenProps.server,
       appName: (this.props.state) ? this.props.state.appName : this.props.screenProps.appName,
       appDir: (this.props.state) ? this.props.state.appDir : this.props.screenProps.AppDir,
+      storyDir: storyDir,
       downloadProgress: 0,
       story: (this.props.story) ? this.props.story : this.props.navigation.getParam('story'),
       theme: (this.props.story && this.props.story.theme) ? this.props.story.theme: this.props.navigation.getParam('story').theme,
       granted: Platform.OS === 'ios',
       transportIndex: 0,
-      selected: 0,
-      completed: 0,
       dlIndex: null,
       dlLoading: false,
+      audioButton: false,
       profile: 'mapbox/walking',
       themeSheet: null,
       initialPosition: null,
@@ -91,7 +96,7 @@ export default class Story extends Component {
   componentDidMount = async () => {
     try {
       await KeepAwake.activate();
-
+      await this.audioPlay();
       if (!this.state.granted) {
         await this.requestFineLocationPermission();
       }
@@ -101,7 +106,6 @@ export default class Story extends Component {
       console.log(e);
     }
   }
-
   componentDidUpdate(prevProps, prevState) {
     if (this.props.story && prevProps.story !== this.state.story) {
       this.setState({story: this.props.story});
@@ -109,35 +113,6 @@ export default class Story extends Component {
   }
   componentWillUnmount = async () => {
     await KeepAwake.deactivate();
-  }
-  getSelected = async() => {
-    const {appDir, story, selected, index} = this.state;
-    if(this.isInstalled(story.id)) {
-      try {
-        // get history from file
-        const storyHF = appDir + '/stories/' + story.id + '/complete.txt';
-        // // check if file exist
-        await RNFS.exists(storyHF)
-        .then( (exists) => {
-            if (exists) {
-                // get id from file
-                RNFetchBlob.fs.readFile(storyHF, 'utf8')
-                .then((data) => {
-                  // handle the data ..
-                  this.setState({completed: parseInt(data), selected: parseInt(data)});
-                  return data;
-                })
-            } else {
-                RNFetchBlob.fs.createFile(storyHF, '0', 'utf8').then(()=>{
-                  this.setState({completed: 0, selected: 1});
-                  console.log('file created');
-                });
-            }
-        });
-      } catch(e) {
-        console.log(e);
-      }
-    }
   }
   updateTransportIndex = (transportIndex) => this.setState({transportIndex})
   updateDlIndex = (dlIndex) => this.setState({dlIndex})
@@ -249,9 +224,7 @@ export default class Story extends Component {
     let story = this.state.story;
     try {
         story.isInstalled = await this.isInstalled(story.id);
-
         this.setState({story: story});
-        (story.isInstalled) ? await this.getSelected() : '';
     } catch(e) {
       console.log(e);
     }
@@ -260,7 +233,6 @@ export default class Story extends Component {
     try {
       return await RNFS.exists(this.state.appDir + '/stories/' + sid)
         .then( (exists) => {
-
             return exists;
         });
     } catch(e) {
@@ -373,6 +345,108 @@ export default class Story extends Component {
       });
     } catch(e) {
       console.log(e.message);
+    }
+
+  }
+  whoosh = null
+  audioPlay = async () => {
+    try {
+      const {story, index, storyDir} = this.state;
+      // if we arrive in first stage , no audio can be played as there is no previous onZoneLeave
+      const maxIndex = (story.stages.length - 1);
+      const stage = story.stages[maxIndex];
+      if (stage) {
+
+        const audios = stage.onZoneLeave.filter(item => (item.type === 'audio'));
+        const count =  audios.length;
+        this.setState({audioButton: true});
+        console.log(count);
+        console.log(audios);
+        if (count > 1) {
+          const audio = audios[0];
+          const audio2 = audios[1];
+          const loop = audio.loop;
+          let path = audio.path.replace(" ", "\ ");
+          let path2 = audio2.path.replace(" ", "\ ");
+          path = storyDir + path.replace("assets/stories/", "");
+          path2 = storyDir + path2.replace("assets/stories/", "");
+          Sound.setCategory('Playback');
+          console.log(path);
+          // Load the sound file path from the app story bundle
+          // See notes below about preloading sounds within initialization code below.
+          this.whoosh = new Sound(path, Sound.MAIN_BUNDLE, (error) => {
+            if (error) {
+              console.log('failed to load the sound', error);
+              return;
+            }
+            // loaded successfully
+            console.log('duration in seconds: ' + this.whoosh.getDuration() + 'number of channels: ' + this.whoosh.getNumberOfChannels());
+            // Loop indefinitely until stop() is called
+
+            // Play the sound with an onEnd callback
+            this.whoosh.play((success) => {
+              if (success) {
+                console.log('successfully finished playing');
+                var nextaudio = new Sound(path2, Sound.MAIN_BUNDLE, (error) => {
+                  if (error) {
+                    console.log('failed to load the sound', error);
+                    return;
+                  }
+                  // loaded successfully
+                  console.log('duration in seconds: ' + nextaudio.getDuration() + 'number of channels: ' + nextaudio.getNumberOfChannels());
+
+                  // Play the sound with an onEnd callback
+                  nextaudio.play((success) => {
+                    if (success) {
+                      console.log('successfully finished playing');
+                      this.setState({audioButton: false});
+                      nextaudio.release();
+                    } else {
+                      console.log('playback failed due to audio decoding errors');
+                    }
+                  });
+                });
+              } else {
+                console.log('playback failed due to audio decoding errors');
+              }
+            });
+            this.whoosh.release();
+          });
+        }
+        if (count === 1) {
+          const audio = audios[0];
+          const loop = audio.loop;
+          let path = audio.path.replace(" ", "\ ");
+          path = storyDir + path.replace("assets/stories/", "");
+          Sound.setCategory('Playback');
+          // Load the sound file path from the app story bundle
+          // See notes below about preloading sounds within initialization code below.
+          this.whoosh = new Sound(path, Sound.MAIN_BUNDLE, (error) => {
+            if (error) {
+              console.log('failed to load the sound', error);
+              return;
+            }
+            // loaded successfully
+            console.log('duration in seconds: ' + this.whoosh.getDuration() + 'number of channels: ' + this.whoosh.getNumberOfChannels());
+
+            // Play the sound with an onEnd callback
+            this.whoosh.play((success) => {
+              if (success) {
+                this.setState({audioButton: false});
+                console.log('successfully finished playing');
+              } else {
+                console.log('playback failed due to audio decoding errors');
+              }
+            });
+            if(loop) {
+              this.whoosh.setNumberOfLoops(-1);
+            }
+          });
+          this.whoosh.release();
+        }
+      }
+    } catch(e) {
+      console.log(e);
     }
 
   }
@@ -530,16 +604,6 @@ export default class Story extends Component {
     return (
       <>
       <View style={themeSheet.card} >
-
-            {distance && (
-              <Text style={themeSheet.distance}> {I18n.t("Distance_to_beginning", "Distance to the beginning of the story ")}: {distance} {I18n.t("Kilometers","kilometers")}</Text>
-            )}
-            {(story.isInstalled) ? <ButtonGroup /> : <TouchableOpacity style={{flex:1, flexGrow: 1, padding: 6}} onPress={() => this.downloadStory(story.id)}><Button buttonStyle={themeSheet.button}  loading={this.state.dlLoading}  rounded={true} type='clear' onPress={() => this.downloadStory(story.id)}  icon={{ name: 'download', type: 'booksonwall', size: 20, color: 'white'}} title='Download' titleStyle={{color: 'white'}}/></TouchableOpacity> }
-
-              <View style={themeSheet.sinopsys} >
-                <HTMLView value={story.sinopsys} stylesheet={sinopsysThemeSheet}/>
-              </View>
-
               <View style={themeSheet.credits} >
               <Text h2 style={themeSheet.subtitle}>{I18n.t("credits", "Credits")}</Text>
               <HTMLView value={story.credits} stylesheet={creditsThemeSheet} />
@@ -549,26 +613,17 @@ export default class Story extends Component {
     )
   }
   renderNavBar = () => (
-    <View style={styles.navContainer}>
-      <View style={styles.statusBar} />
-      <View style={styles.navBar}>
-        <TouchableOpacity style={styles.iconLeft} onPress={() => this.props.navigation.goBack()}>
-          <Button onPress={() => this.props.navigation.goBack()} type='clear' underlayColor='#FFFFFF' iconContainerStyle={{ marginLeft: 2}} icon={{name:'left-arrow', size:24, color:'#fff', type:'booksonwall'}} />
-        </TouchableOpacity>
-      </View>
+  <View style={styles.navContainer}>
+    <View style={styles.statusBar} />
+    <View style={styles.navBar}>
+      <TouchableOpacity style={styles.iconLeft} onPress={() => this.props.navigation.goBack()}>
+        <Button onPress={() => this.props.navigation.goBack()} type='clear' underlayColor='#FFFFFF' iconContainerStyle={{ marginLeft: 2}} icon={{name:'left-arrow', size:24, color:'#fff', type:'booksonwall'}} />
+      </TouchableOpacity>
     </View>
-  )
-  storyMap = () => {
-    const {index, story, completed} = this.state;
-
-    (completed === story.stages.length)
-    ? this.props.navigation.navigate('StoryComplete', {screenProps: this.props.screenProps, story: story, index: 0})
-    : this.props.navigation.navigate('StoryMap', {screenProps: this.props.screenProps, story: story, index: 0}) ;
-  }
-  launchAR = () => {
-    const {index, story, completed} = this.state;
-    (story.stages.length === completed) ? this.props.navigation.navigate('StoryComplete', {screenProps: this.props.screenProps, story: story, index: 0}) : this.props.navigation.navigate('ToAr', {screenProps: this.props.screenProps, story: story, index: 0}) ;
-  }
+  </View>
+)
+  storyMap = () => this.props.navigation.navigate('StoryMap', {screenProps: this.props.screenProps, story: this.state.story, index: 0})
+  launchAR = () => this.props.navigation.navigate('ToAr', {screenProps: this.props.screenProps, story: this.state.story, index: 0})
   render() {
       const {theme, themeSheet, story} = this.state;
 

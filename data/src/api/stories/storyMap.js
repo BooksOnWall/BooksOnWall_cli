@@ -11,17 +11,18 @@ import sheet from './stage/mapbox-gl/styles/sheet';
 import I18n from "../../utils/i18n";
 import Page from './stage/mapbox-gl/common/Page';
 import { MAPBOX_KEY  } from 'react-native-dotenv';
+import RNFetchBlob from 'rn-fetch-blob';
+import * as RNFS from 'react-native-fs';
 import PulseCircleLayer from './stage/mapbox-gl/showDirection/PulseCircleLayer';
-import mapIcon from '../../../assets/nav/btn_map_point.png';
-import openIcon from '../../../assets/nav/btn_map_point.png';
-import completeIcon from '../../../assets/nav/btn_map_point.png';
-import unknownIcon from '../../../assets/nav/btn_map_point.png';
+
+import openIcon from '../../../assets/nav/point1.png';
+import completeIcon from '../../../assets/nav/point2.png';
+import unknownIcon from '../../../assets/nav/point3.png';
 
 import {featureCollection, feature} from '@turf/helpers';
 import {lineString as makeLineString, bbox, centroid, polygon} from '@turf/turf';
 // import PulseCircle from './mapbox-gl/PulseCircleLayer';
-// import audio lib
-import Sound from 'react-native-sound';
+
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 const IS_IPHONE_X = SCREEN_HEIGHT === 812 || SCREEN_HEIGHT === 896;
@@ -104,14 +105,6 @@ const styles = StyleSheet.create({
 
 
 const layerStyles = {
-  origin: {
-    circleRadius: 15,
-    circleColor: 'white',
-  },
-  destination: {
-    circleRadius: 30,
-    circleColor: 'white',
-  },
   route: {
     lineColor: 'white',
     lineCap: MapboxGL.LineJoin.Round,
@@ -148,14 +141,17 @@ class StoryMap extends Component {
     });
     var line = makeLineString(storyPoints);
     var mbbox = bbox(line);
+    const index = this.props.navigation.getParam('index');
+    const id = this.props.navigation.getParam('story').id;
+
     this.state = {
       featureCollection: featureCollection([]),
       latitude: null,
       record: null,
       showUserLocation: true,
-      origin: routes[0].coordinates,
-      destination: routes[1].coordinates,
-      goto: routes[0].coordinates ,
+      origin: routes[index].coordinates,
+      destination: routes[(index+1)].coordinates,
+      goto: routes[index].coordinates ,
       zoom: 15,
       followUserLocation: false,
       route: null,
@@ -163,12 +159,13 @@ class StoryMap extends Component {
       routes: routes,
       mbbox: mbbox,
       images: {
-        example: mapIcon,
         openIcon: openIcon,
         completeIcon: completeIcon,
-        unknownIcon: unknownIcon,
-        mapIcon: mapIcon,
+        unknownIcon: unknownIcon
       },
+      toPath: true,
+      toAR: true,
+      mapTheme: null,
       prevLatLng: null,
       track: null,
       distanceTotal:null,
@@ -177,6 +174,7 @@ class StoryMap extends Component {
       prevLatLng: null,
       radius: 20,
       selected:1,
+      completed: null,
       selectedMenu: null,
       offlinePack: null,
       currentPoint: null,
@@ -189,14 +187,32 @@ class StoryMap extends Component {
       story: this.props.navigation.getParam('story'),
       theme: this.props.navigation.getParam('story').theme,
       order: this.props.navigation.getParam('order'),
-      index: this.props.navigation.getParam('index'),
+      index: index,
       location: [],
       position: {},
     };
-
+    console.log('styleURL', this.state.styleURL);
     this.onStart = this.onStart.bind(this);
   }
-
+  getMapTheme = async () => {
+    const id = this.state.story.id;
+    const mapThemePath =  this.props.screenProps.AppDir+ '/stories/'+ id +'/map.json';
+    await RNFS.exists(mapThemePath)
+    .then( (exists) => {
+        if (exists) {
+            console.log("Map Theme File exist");
+            // get id from file
+            RNFetchBlob.fs.readFile(mapThemePath, 'utf8')
+            .then((data) => {
+              // handle the
+              const theme =  JSON.parse(data);
+              const style = theme.style;
+              this.setState({ mapTheme: style});
+              return style;
+            })
+        }
+    });
+  }
   onStart() {
     const routeSimulator = new RouteSimulator(this.state.route);
     routeSimulator.addListener(currentPoint => this.setState({currentPoint}));
@@ -214,6 +230,8 @@ class StoryMap extends Component {
       };
 
       const res = await directionsClient.getDirections(reqOptions).send();
+      await this.history();
+      await this.getMapTheme();
       this.setState({
         route: makeLineString(res.body.routes[0].geometry.coordinates),
       });
@@ -363,104 +381,43 @@ class StoryMap extends Component {
   onUserLocationUpdate = (newUserLocation) => {
     this.setState({position: newUserLocation})
   }
-  audioPlay = async () => {
-    const story = this.state;
-    const stage = story.stages[this.state.index];
-    const count =  stage.onZoneLeave.length;
-    console.log(count);
-    if (count > 1) {
-      const audio = stage.onZoneLeave[0];
-      const audio2 = stage.onZoneLeave[1];
-      const loop = audio.loop;
-      let path = audio.path;
-      let path2 = audio2.path;
-      path = this.state.storyDir + path.replace("assets/stories/", "");
-      path2 = this.state.storyDir + path2.replace("assets/stories/", "");
-      Sound.setCategory('Playback');
-      // Load the sound file path from the app story bundle
-      // See notes below about preloading sounds within initialization code below.
-      var whoosh = new Sound(path, Sound.MAIN_BUNDLE, (error) => {
-        if (error) {
-          console.log('failed to load the sound', error);
-          return;
+  history= async () =>  {
+    const {AppDir, routes, index, selected} = this.state;
+    // get history from file
+    const storyHF = AppDir + '/stories/' + this.state.story.id + '/complete.txt';
+    console.log(storyHF);
+    // // check if file exist
+    await RNFS.exists(storyHF)
+    .then( (exists) => {
+        if (exists) {
+            console.log("History File exist");
+            // get id from file
+            RNFetchBlob.fs.readFile(storyHF, 'utf8')
+            .then((data) => {
+              // handle the data ..
+              const toPath = (parseInt(data) === routes.length) ? false : true;
+              this.setState({toPath: toPath, completed: parseInt(data), selected: (parseInt(data))});
+              if (data > 0)   this.goTo(routes[(parseInt(data)-1)].coordinates, false);
+              return data;
+            })
+        } else {
+            console.log("File need to be created with index 1");
+            RNFetchBlob.fs.createFile(storyHF, '0', 'utf8').then(()=>{
+              this.setState({completed: 0});
+              console.log('file created');
+             });
         }
-        // loaded successfully
-        console.log('duration in seconds: ' + whoosh.getDuration() + 'number of channels: ' + whoosh.getNumberOfChannels());
-        // Loop indefinitely until stop() is called
-
-        // Play the sound with an onEnd callback
-        whoosh.play((success) => {
-          if (success) {
-            console.log('successfully finished playing');
-            var nextaudio = new Sound(path2, Sound.MAIN_BUNDLE, (error) => {
-              if (error) {
-                console.log('failed to load the sound', error);
-                return;
-              }
-              // loaded successfully
-              console.log('duration in seconds: ' + nextaudio.getDuration() + 'number of channels: ' + nextaudio.getNumberOfChannels());
-
-              // Play the sound with an onEnd callback
-              nextaudio.play((success) => {
-                if (success) {
-                  console.log('successfully finished playing');
-                  nextaudio.release();
-                } else {
-                  console.log('playback failed due to audio decoding errors');
-                }
-              });
-            });
-          } else {
-            console.log('playback failed due to audio decoding errors');
-          }
-        });
-        whoosh.release();
-      });
-    }
-    if (count === 1) {
-      const audio = stage.onZoneLeave[0];
-
-      const loop = audio.loop;
-      let path = audio.path
-      path = this.state.storyDir + path.replace("assets/stories/", "");
-      Sound.setCategory('Playback');
-      // Load the sound file path from the app story bundle
-      // See notes below about preloading sounds within initialization code below.
-      var whoosh = new Sound(path, Sound.MAIN_BUNDLE, (error) => {
-        if (error) {
-          console.log('failed to load the sound', error);
-          return;
-        }
-        // loaded successfully
-        console.log('duration in seconds: ' + whoosh.getDuration() + 'number of channels: ' + whoosh.getNumberOfChannels());
-
-        // Play the sound with an onEnd callback
-        whoosh.play((success) => {
-          if (success) {
-            console.log('successfully finished playing');
-          } else {
-            console.log('playback failed due to audio decoding errors');
-          }
-        });
-        if(loop) {
-          whoosh.setNumberOfLoops(-1);
-        }
-      });
-      whoosh.release();
-    }
-
+    });
   }
   enterStage = (e) => {
     const feature = e.nativeEvent.payload;
-    console.log('You pressed a layer here is your feature', feature);
     const index = feature.properties.index;
     this.goTo(feature.geometry.coordinates);
     this.props.navigation.navigate('ToAr', {screenProps: this.props.screenProps, story: this.state.story, index: index});
-    Toast.showWithGravity('iEnter: '+feature.properties.text, Toast.SHORT, Toast.TOP);
-
+    Toast.showWithGravity('Enter: '+feature.properties.label, Toast.SHORT, Toast.TOP);
   }
   renderStages = () => {
-    const {theme, selected, routes, index, images} = this.state;
+    const {theme, completed, selected, routes, index, images} = this.state;
     const id = (selected -1);
     let features = {
       type: 'FeatureCollection',
@@ -469,8 +426,10 @@ class StoryMap extends Component {
 
     if (routes && routes.length > 1) {
       features.features = routes.map((stage, i) => {
-        let icon = (index > i ) ? 'openIcon' : 'unknownIcon';
-        icon = (index === i) ? 'completeIcon' : icon;
+        const completedIndex = (completed === 0) ? 0: (completed-1);
+        let icon = (completedIndex > i ) ? 'openIcon' : 'unknownIcon';
+        icon = (completedIndex === i) ? 'completeIcon' : icon;
+
         const feature = {
           type: 'Feature',
           id: 'Stage'+i,
@@ -478,7 +437,7 @@ class StoryMap extends Component {
             radius: 40,
             icon: icon,
             index: i,
-            label: (index > i) ? '?' : (i+1),
+            label: (i > completedIndex) ? '?' : (i+1),
           },
           geometry: {
             type: 'Point',
@@ -487,7 +446,6 @@ class StoryMap extends Component {
         };
         return feature;
       });
-
 
       let backgroundColor = 'white';
       const font = theme.font1;
@@ -500,15 +458,14 @@ class StoryMap extends Component {
           textSize: 40,
           textMaxWidth: 50,
           textColor: '#FFF',
-          // textFont: font,
           textAnchor: 'center',
           textAllowOverlap: true,
           iconSize: [
             'match',
             ['get', 'icon'],
-            'mapIcon',
-            .8,
-            /* default */ 1,
+            'unknownIcon',
+            1.4,
+            /* default */ 1.2,
           ],
         },
       };
@@ -541,7 +498,7 @@ class StoryMap extends Component {
          images={images}
          onImageMissing={(imageKey) =>
            this.setState({
-             images: {...this.state.images, [imageKey]: mapIcon},
+             images: {...this.state.images, [imageKey]: openIcon},
            })
          }
        />
@@ -562,18 +519,21 @@ class StoryMap extends Component {
   }
   next = () => {
     const max = this.state.routes.length;
-    const selected = (this.state.selected < max) ? (this.state.selected + 1) : max;
+    const selected = (parseInt(this.state.selected) < max) ? (parseInt(this.state.selected) + 1) : max;
     this.setState({selected: selected});
     const id = (selected -1);
     const coords = this.state.routes[id].coordinates;
     this.goTo(coords, false);
   }
   render() {
-    const {distanceTotal, selected, theme, story} = this.state;
+
+    const {index, routes , toPath, toAR, distanceTotal, styleURL, selected, completed, theme, story, mapTheme} = this.state;
+    if(!mapTheme) return false;
+
     const Header = () => (
       <View style={styles.header}>
         <ImageBackground source={{uri: theme.banner.filePath}} style={styles.headerBackground}>
-        <Badge size="large" status="success" value={selected} containerStyle={{ position: 'absolute', top: 10, right: 10 }}/>
+        <Badge size="large" status="success" value={'Completed: ' + completed} containerStyle={{ position: 'absolute', top: 10, right: 10 }}/>
           <Text style={{
             fontSize: 26,
             letterSpacing: 1,
@@ -588,10 +548,11 @@ class StoryMap extends Component {
 
       </View>
     );
-    const storyPrev = () => <Icon size={30} name='left-arrow' type='booksonwall' color='#fff' onPress={() => this.prev()} />;
-    const storyMapLine = () => <Icon size={30} name='map-line' type='booksonwall' color='#fff' onPress={() => this.props.navigation.navigate('ToPath', {screenProps: this.props.screenProps, story: this.state.story, index: (this.state.selected - 1)})} />;
-    const launchAR = () => <Icon size={30} name='bow-isologo' type='booksonwall' color='#fff' onPress={() => this.props.navigation.navigate('ToAr', {screenProps: this.props.screenProps, story: this.state.story, index: (this.state.selected - 1)})} />;
-    const storyNext = () => <Icon size={30} name='right-arrow' type='booksonwall' color='#fff' onPress={() => this.next()} />;
+
+    const storyPrev = () => (selected > 0) ? <Icon size={30} name='left-arrow' type='booksonwall' color='#fff' onPress={() => this.prev()} /> :  null;
+    const storyMapLine = () => (toPath) ? <Icon size={30} name='map-line' type='booksonwall' color='#fff' onPress={() => this.props.navigation.navigate('ToPath', {screenProps: this.props.screenProps, story: this.state.story, index: (this.state.selected > 0) ? (this.state.selected - 1): 0})} /> : null;
+    const launchAR = () => (toAR) ? <Icon size={30} name='bow-isologo' type='booksonwall' color='#fff' onPress={() => this.props.navigation.navigate('ToAr', {screenProps: this.props.screenProps, story: this.state.story, index: (this.state.selected > 0) ? (this.state.selected - 1): 0})} /> : null;
+    const storyNext = () => (selected !== routes.length) ? <Icon size={30} name='right-arrow' type='booksonwall' color='#fff' onPress={() => this.next()} /> : null;
     const MenuButtons = [ { element: storyPrev }, { element: launchAR }, { element: storyMapLine }, { element: storyNext} ];
 
     const Footer = () => (
@@ -607,6 +568,7 @@ class StoryMap extends Component {
       />
       </View>
     );
+
     return (
       <Page {...this.props}>
         <Header />
@@ -617,7 +579,7 @@ class StoryMap extends Component {
           ref={c => (this._map = c)}
           style={sheet.matchParent}
           pitch={60}
-          styleURL={this.state.styleURL}
+          styleURL={styleURL}
           >
 
           <MapboxGL.Camera
