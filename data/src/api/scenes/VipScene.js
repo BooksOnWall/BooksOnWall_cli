@@ -28,6 +28,8 @@ export default class VipScene extends Component {
       storyDir: params.appDir+'/stories/',
       story: params.story,
       index: params.index,
+      pIndex: 0,
+      scene_options: params.stage.scene_options,
       stage: params.stage,
       pictures: params.pictures,
       picturePath: "",
@@ -38,6 +40,7 @@ export default class VipScene extends Component {
       MatchAudioPaused: true,
       MatchAudioMuted: false,
       MatchAudioLoop: false,
+      anchorFound: false,
       audios: [],
       video: {},
       audioLoop: false,
@@ -47,7 +50,6 @@ export default class VipScene extends Component {
       onZoneLeave: params.onZoneLeave,
       onPictureMatch: params.onPictureMatch
     };
-    console.log('index', params.index);
     this.onInitialized = this.onInitialized.bind(this);
     this.buildTrackingTargets = this.buildTrackingTargets.bind(this);
     this.setVideoComponent = this.setVideoComponent.bind(this);
@@ -81,26 +83,24 @@ export default class VipScene extends Component {
     }
   }
   buildTrackingTargets = async () => {
-    const {stage, pictures, storyDir} = this.state;
+    const {pIndex, stage, pictures, storyDir, scene_options} = this.state;
     try {
-      //for (let picture of pictures) {
-        //let path = picture.path;
         let path = pictures[0].path.replace(" ", "\ ");
         let radius = stage.radius;
-        let dimension = (stage.dimension) ? stage.dimension.split("x"): null;
-        let width = (dimension) ? parseFloat(dimension[0]) : 1;
-        let height = (dimension) ? parseFloat(dimension[1]) : 1;
+        console.log('vip',scene_options.videos[0]);
+        let width = (scene_options.pictures && scene_options.pictures.length >0 ) ? parseFloat(scene_options.pictures[pIndex].width) : 1;
+        let height = (scene_options.pictures && scene_options.pictures.length >0 ) ? parseFloat(scene_options.pictures[pIndex].height) : 1;
         path = 'file://' + this.state.storyDir + path.replace("assets/stories", "");
         //this.setState({picturePath: path});
         await ViroARTrackingTargets.createTargets({
-          "targetOne" : {
+          "targetVIP" : {
             source : { uri: path },
             orientation : "Up",
             physicalWidth : width, // real world width in meters
             type: 'Image'
           },
         });
-       //}
+
        // create materials
 
     } catch(e) {
@@ -108,6 +108,15 @@ export default class VipScene extends Component {
     }
   }
   audio = null
+  stopAudio = () => {
+    const {anchorFound} = this.state;
+    console.log('anchorFound', anchorFound);
+    if(anchorFound === null) {
+      console.log('stop audio');
+      this.setState({anchorFound: true, audioLoop: false});
+      this.toggleButtonAudio();
+    }
+  }
   dispatchMedia = async () => {
     try  {
       const {story, index, storyDir} = this.state;
@@ -124,7 +133,7 @@ export default class VipScene extends Component {
       if (audios['onPictureMatch'] && audios['onPictureMatch'].length > 0 ) {
         let MatchAudio = audios['onPictureMatch'][0];
         let Matchpath = MatchAudio.path.replace(" ", "\ ");
-        Matchpath = 'file://'+ storyDir + path.replace("assets/stories", "");
+        Matchpath = 'file://'+ storyDir + Matchpath.replace("assets/stories", "");
         let Matchloop = MatchAudio.loop;
         this.setState({'MatchAudioPath': Matchpath,'MatchAudioLoop': Matchloop });
       }
@@ -185,13 +194,12 @@ export default class VipScene extends Component {
       this.setState({ buttonStateTag: "onTap" });
   }
   render = () => {
-    const {index, MatchaudioPath, MatchAudioLoop, MatchAudioPaused, MatchAudioMuted, audioPath, audioLoop, videoPath, videoLoop } = this.state;
+    const {index, pIndex, scene_options, MatchAudioPath, MatchAudioLoop, MatchAudioPaused, MatchAudioMuted, audioPath, audioLoop, videoPath, videoLoop } = this.state;
     const {audioPaused, audioMuted} = this.props.sceneNavigator.viroAppProps;
-    console.log('audioPaused', audioPaused);
-    console.log('index',index);
+    // <ViroARImageMarker onAnchorFound={() => this.stopAudio()} ...
     return (
       <SafeAreaView>
-      <ViroARScene onTrackingUpdated={this.onInitialized}  >
+      <ViroARScene onTrackingUpdated={this.onInitialized} >
         <ViroSound
            paused={audioPaused}
            muted={audioMuted}
@@ -201,11 +209,13 @@ export default class VipScene extends Component {
            onFinish={this.onFinishSound}
            onError={this.onErrorSound}
         />
-        <ViroARImageMarker target={"targetOne"} >
+      <ViroARImageMarker target={"targetVIP"}   >
             <ViroVideo
               source={{uri: videoPath}}
               dragType="FixedToWorld"
               onDrag={()=>{}}
+              width={parseFloat(scene_options.videos[0].width)}
+              height={parseFloat(scene_options.videos[0].height)}
               muted={false}
               paused={false}
               visible={true}
@@ -214,20 +224,20 @@ export default class VipScene extends Component {
               rotation={[-90,0,0]}
               opacity={1}
               onFinish={this.onFinishVideo}
+              onError={this.onVideoError}
               materials={["chromaKeyFilteredVideo"]}
             />
-          {(MatchaudioPath) ?
-            <ViroSound
-               paused={MatchAudioPaused}
-               muted={MatchAudioMuted}
-               source={{uri: MatchAudioPath }}
-               loop={MatchAudioLoop}
-               volume={1.0}
-               onFinish={this.onFinishSound}
-               onError={this.onErrorSound}
-            /> : null}
-
         </ViroARImageMarker>
+        {(MatchAudioPath) ?
+          <ViroSound
+             paused={MatchAudioPaused}
+             muted={MatchAudioMuted}
+             source={{uri: MatchAudioPath }}
+             loop={MatchAudioLoop}
+             volume={1.0}
+             onFinish={this.onFinishSound}
+             onError={this.onErrorSound}
+          /> : null}
       </ViroARScene>
       </SafeAreaView>
     );

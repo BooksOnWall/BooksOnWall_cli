@@ -29,6 +29,8 @@ export default class VaampScene extends Component {
       index: params.index,
       stage: params.stage,
       pictures: params.pictures,
+      pIndex: 0,
+      scene_options: params.stage.scene_options,
       picturePath: "",
       audioPath: "",
       paused: (params.paused) ? params.paused : false,
@@ -92,7 +94,7 @@ export default class VaampScene extends Component {
         path = 'file://' + this.state.storyDir + path.replace("assets/stories", "");
         //this.setState({picturePath: path});
         await ViroARTrackingTargets.createTargets({
-          "targetOne" : {
+          "targetVAMP" : {
             source : { uri: path },
             orientation : "Up",
             physicalWidth : width, // real world width in meters
@@ -105,6 +107,38 @@ export default class VaampScene extends Component {
     } catch(e) {
       console.log(e);
     }
+  }
+  dispatchMedia = async () => {
+    try  {
+      const {story, index, storyDir} = this.state;
+      const stage =  story.stages[index];
+      let audios = [];
+      let videos = [];
+      audios['onZoneEnter'] = (stage.onZoneEnter && stage.onZoneEnter.length > 0 ) ? stage.onZoneEnter.filter(item => item.type === 'audio'): null;
+      audios['onPictureMatch'] = (stage.onPictureMatch && stage.onPictureMatch.length > 0) ? stage.onPictureMatch.filter(item => item.type === 'audio') : null;
+      videos['onZoneEnter'] = (stage.onZoneEnter && stage.onZoneEnter.length > 0 ) ? stage.onZoneEnter.filter(item => item.type === 'video') : null;
+      videos['onPictureMatch'] = (stage.onPictureMatch && stage.onPictureMatch.length > 0) ? stage.onPictureMatch.filter(item => item.type === 'video') : null;
+
+      this.setState({audios: audios, videos: videos});
+
+      if (audios['onPictureMatch'] && audios['onPictureMatch'].length > 0 ) {
+        let MatchAudio = audios['onPictureMatch'][0];
+        let Matchpath = MatchAudio.path.replace(" ", "\ ");
+        Matchpath = 'file://'+ storyDir + Matchpath.replace("assets/stories", "");
+        let Matchloop = MatchAudio.loop;
+        this.setState({'MatchAudioPath': Matchpath,'MatchAudioLoop': Matchloop });
+      }
+      if (audios['onZoneEnter'] && audios['onZoneEnter'].length > 0 ) {
+        let audio = audios['onZoneEnter'][0];
+        let path = audio.path.replace(" ", "\ ");
+        path = 'file://'+ storyDir + path.replace("assets/stories", "");
+        let loop = audio.loop;
+        this.setState({'audioPath': path,'audioLoop': loop });
+      }
+    } catch(e) {
+      console.log(e);
+    }
+
   }
   setVideoComponent = () => {
     let path = this.state.stage.onPictureMatch[0].path;
@@ -126,6 +160,7 @@ export default class VaampScene extends Component {
     console.log("Sound terminated");
   }
   onFinishVideo = () => {
+    this.loadAndPlayAudio('onPictureMatch');
     console.log("Video terminated");
   }
   onVideoError = (event) => {
@@ -158,7 +193,37 @@ export default class VaampScene extends Component {
            onFinish={this.onFinishSound}
            onError={this.onErrorSound}
         />
+      <ViroARImageMarker target={"targetVAMP"} >
+              <ViroVideo
+                source={{uri: videoPath}}
+                dragType="FixedToWorld"
+                onDrag={()=>{}}
+                width={parseFloat(scene_options.videos[0].width)}
+                height={parseFloat(scene_options.videos[0].height)}
+                muted={false}
+                paused={false}
+                visible={true}
+                loop={videoLoop}
+                position={[parseFloat(scene_options.videos[0].x),parseFloat(scene_options.videos[0].y),parseFloat(scene_options.videos[0].z)]}
+                rotation={[-90,0,0]}
+                opacity={1}
+                onError={this.onVideoError}
+                onFinish={this.onFinishVideo}
+                materials={["chromaKeyFilteredVideo"]}
+              />
 
+
+          </ViroARImageMarker>
+          {(MatchaudioPath) ?
+            <ViroSound
+               paused={MatchAudioPaused}
+               muted={MatchAudioMuted}
+               source={{uri: MatchAudioPath }}
+               loop={MatchAudioLoop}
+               volume={1.0}
+               onFinish={this.onFinishSound}
+               onError={this.onErrorSound}
+            /> : null}
       </ViroARScene>
       </SafeAreaView>
     );
