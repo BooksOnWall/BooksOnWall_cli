@@ -1,27 +1,33 @@
 'use strict';
 
 import React, { Component } from 'react';
-import {SafeAreaView,ActivityIndicator, Button, Text,StyleSheet, TouchableHighlight} from 'react-native';
+import {SafeAreaView, StyleSheet} from 'react-native';
 import {
   ViroConstants,
   ViroARScene,
   ViroARImageMarker,
-  ViroVideo,
   ViroMaterials,
+  ViroVideo,
   ViroSound,
   ViroARTrackingTargets,
   ViroAmbientLight
 } from 'react-viro';
 import KeepAwake from 'react-native-keep-awake';
+import I18n from "../../utils/i18n";
+import { Patricie } from './Patricie';
+
+
 
 export default class VipScene extends Component {
   constructor(props) {
     super(props);
     let params = this.props.sceneNavigator.viroAppProps;
     // Set initial state here
+    console.log('theme',params.theme);
     this.toogleButtonAudio = params.toggleButtonAudio;
+    this.goToMap = params.goToMap;
+    this.next = params.next;
     this.state = {
-      text : "You Found me ...",
       server: params.server,
       appName: params.appName,
       appDir: params.appDir,
@@ -40,7 +46,15 @@ export default class VipScene extends Component {
       MatchAudioPaused: true,
       MatchAudioMuted: false,
       MatchAudioLoop: false,
+      finishAll: params.finishAll,
+      animate: {name: 'movePicture'},
       anchorFound: false,
+      imageTracking: params.imageTracking,
+      animate: {name: 'movePicture'},
+      message : I18n.t("NextPath", "Go to the next point"),
+      theme: params.theme,
+      fontFamily: params.theme.font1,
+      color: params.theme.color2,
       audios: [],
       video: {},
       audioLoop: false,
@@ -73,14 +87,23 @@ export default class VipScene extends Component {
     }
 
   }
+  goToNext = () => {
+    this.setState({animate: 'rotate'});
+    setTimeout(() => {  return this.props.sceneNavigator.viroAppProps.goToNext(); }, 5000);
+
+  }
   onInitialized(state, reason) {
     if (state == ViroConstants.TRACKING_NORMAL) {
-      this.setState({
-        text : "Search for me ..."
-      });
+
     } else if (state == ViroConstants.TRACKING_NONE) {
       // Handle loss of tracking
     }
+  }
+  configureAnimations = async (finishAll, loop=false) => {
+    const name ='movePicture';
+    const run = finishAll;
+    //this.setState({animate:{name, run, loop}});
+    return ({name , run, loop});
   }
   buildTrackingTargets = async () => {
     const {pIndex, stage, pictures, storyDir, scene_options} = this.state;
@@ -167,14 +190,16 @@ export default class VipScene extends Component {
     // @zone string onZoneEnter or onPictureMatch
     const {audios, storyDir} = this.state;
       // set path & loop to audios : one by zone
-      (zone === 'onPictureMatch') ? this.setState({MatchAudioPaused: false}) : this.setState({audioPaused: true});
+      (zone === 'onPictureMatch' && audios && audios[zone] && audios[zone].length > 0) ? this.setState({MatchAudioPaused: false}) : this.setState({audioPaused: true, finishAll: true});
   }
   toggleButtonAudio = async () => this.props.sceneNavigator.viroAppProps.toggleButtonAudio()
+  onFinishAll = () => this.setState({finishAll: true})
   onFinishSound = () => {
     this.toggleButtonAudio();
     console.log("Sound terminated");
   }
   onFinishVideo = () => {
+    this.setState({imageTracking:  false});
     this.loadAndPlayAudio('onPictureMatch');
     console.log("Video terminated");
   }
@@ -193,9 +218,12 @@ export default class VipScene extends Component {
   onButtonTap() {
       this.setState({ buttonStateTag: "onTap" });
   }
+
   render = () => {
-    const {index, pIndex, scene_options, MatchAudioPath, MatchAudioLoop, MatchAudioPaused, MatchAudioMuted, audioPath, audioLoop, videoPath, videoLoop } = this.state;
+    const {index, message,animate, fontFamily, color, imageTracking, finishAll, theme, pIndex, scene_options, MatchAudioPath, MatchAudioLoop, MatchAudioPaused, MatchAudioMuted, audioPath, audioLoop, videoPath, videoLoop } = this.state;
     const {audioPaused, audioMuted} = this.props.sceneNavigator.viroAppProps;
+    const font = String(fontFamily);
+    const textColor = String(color);
     // <ViroARImageMarker onAnchorFound={() => this.stopAudio()} ...
     return (
       <SafeAreaView>
@@ -209,7 +237,7 @@ export default class VipScene extends Component {
            onFinish={this.onFinishSound}
            onError={this.onErrorSound}
         />
-      <ViroARImageMarker target={"targetVIP"}   >
+      <ViroARImageMarker visible={imageTracking} target={"targetVIP"}   >
             <ViroVideo
               source={{uri: videoPath}}
               dragType="FixedToWorld"
@@ -218,7 +246,7 @@ export default class VipScene extends Component {
               height={parseFloat(scene_options.videos[0].height)}
               muted={false}
               paused={false}
-              visible={true}
+              visible={imageTracking}
               loop={videoLoop}
               position={[0,0,0]}
               rotation={[-90,0,0]}
@@ -235,9 +263,19 @@ export default class VipScene extends Component {
              source={{uri: MatchAudioPath }}
              loop={MatchAudioLoop}
              volume={1.0}
-             onFinish={this.onFinishSound}
+             onFinish={this.onFinishAll}
              onError={this.onErrorSound}
           /> : null}
+          <Patricie
+            animate={{name: 'movePicture', run: finishAll, loop: false}}
+            finishAll={finishAll}
+            next={this.next}
+            message={message}
+            font={font}
+            textColor={color}
+            />
+
+
       </ViroARScene>
       </SafeAreaView>
     );

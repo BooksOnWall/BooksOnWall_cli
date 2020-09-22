@@ -1,27 +1,29 @@
 'use strict';
 
 import React, { Component } from 'react';
-import {SafeAreaView,ActivityIndicator, Button, Text,StyleSheet, TouchableHighlight} from 'react-native';
+import {SafeAreaView, StyleSheet} from 'react-native';
 import {
   ViroConstants,
   ViroARScene,
   ViroARImageMarker,
-  ViroVideo,
   ViroMaterials,
+  ViroVideo,
   ViroSound,
   ViroARTrackingTargets,
   ViroAmbientLight
 } from 'react-viro';
 import KeepAwake from 'react-native-keep-awake';
+import {Patricie} from './Patricie';
 
-export default class PsivScene extends Component {
+import I18n from "../../utils/i18n";
+
+export default class PSIVScene extends Component {
   constructor(props) {
     super(props);
     let params = this.props.sceneNavigator.viroAppProps;
     // Set initial state here
     this.toogleButtonAudio = params.toggleButtonAudio;
     this.state = {
-      text : "You Found me ...",
       server: params.server,
       appName: params.appName,
       appDir: params.appDir,
@@ -40,6 +42,12 @@ export default class PsivScene extends Component {
       MatchAudioPaused: true,
       MatchAudioMuted: false,
       MatchAudioLoop: false,
+      finishAll: false,
+      animate: {name: 'movePicture'},
+      text : I18n.t("NextPath", "Go to the next point"),
+      theme: params.theme,
+      fontFamily: params.theme.font1,
+      color: params.theme.color2,
       audios: [],
       video: {},
       audioLoop: false,
@@ -75,9 +83,9 @@ export default class PsivScene extends Component {
   }
   onInitialized(state, reason) {
     if (state == ViroConstants.TRACKING_NORMAL) {
-      this.setState({
-        text : "Search for me ..."
-      });
+      // this.setState({
+      //   text : "Search for me ..."
+      // });
     } else if (state == ViroConstants.TRACKING_NONE) {
       // Handle loss of tracking
     }
@@ -87,7 +95,7 @@ export default class PsivScene extends Component {
     try {
         let path = pictures[0].path.replace(" ", "\ ");
         let radius = stage.radius;
-        console.log('vip',scene_options.videos[0]);
+        console.log('psiv',scene_options.videos[0]);
         let width = (scene_options.pictures && scene_options.pictures.length >0 ) ? parseFloat(scene_options.pictures[pIndex].width) : 1;
         let height = (scene_options.pictures && scene_options.pictures.length >0 ) ? parseFloat(scene_options.pictures[pIndex].height) : 1;
         path = 'file://' + this.state.storyDir + path.replace("assets/stories", "");
@@ -185,10 +193,12 @@ export default class PsivScene extends Component {
       this.setState({ buttonStateTag: "onTap" });
   }
   render = () => {
-    const {index, pIndex, scene_options, MatchaudioPath, MatchAudioLoop, MatchAudioPaused, MatchAudioMuted, audioPath, audioLoop, videoPath, videoLoop } = this.state;
+    const {index, finishAll, animate,text, fontFamily, color, pIndex, scene_options, MatchaudioPath, MatchAudioLoop, MatchAudioPaused, MatchAudioMuted, audioPath, audioLoop, videoPath, videoLoop } = this.state;
     const {audioPaused, audioMuted} = this.props.sceneNavigator.viroAppProps;
     console.log('audioPaused', audioPaused);
     console.log('index',index);
+    const font = String(fontFamily);
+    const textColor = String(color);
     return (
       <SafeAreaView>
       <ViroARScene onTrackingUpdated={this.onInitialized}  >
@@ -212,7 +222,7 @@ export default class PsivScene extends Component {
               paused={false}
               visible={true}
               loop={videoLoop}
-              position={[parseFloat(scene_options.pictures[pIndex].videoPosition.x),parseFloat(scene_options.pictures[pIndex].videoPosition.y),parseFloat(scene_options.pictures[pIndex].videoPosition.z)]}
+              position={(scene_options.pictures[pIndex].videoPosition) ? [parseFloat(scene_options.pictures[pIndex].videoPosition.x),parseFloat(scene_options.pictures[pIndex].videoPosition.y),parseFloat(scene_options.pictures[pIndex].videoPosition.z)] : [0,0,0]}
               rotation={[-90,0,0]}
               opacity={1}
               onError={this.onVideoError}
@@ -232,6 +242,14 @@ export default class PsivScene extends Component {
              onFinish={this.onFinishSound}
              onError={this.onErrorSound}
           /> : null}
+          <Patricie
+            animate={{name: 'movePicture', run: finishAll, loop: false}}
+            finishAll={finishAll}
+            goToMap={this.goToMap}
+            text={text}
+            font={font}
+            textColor={textColor}
+            />
       </ViroARScene>
       </SafeAreaView>
     );

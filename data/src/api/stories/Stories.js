@@ -5,10 +5,10 @@ import { Button, Header, Card, ListItem, ThemeProvider } from 'react-native-elem
 import Orientation from 'react-native-orientation';
 
 import Geolocation from '@react-native-community/geolocation';
-import { MAPBOX_KEY  } from 'react-native-dotenv';
+import { MAPBOX_KEY , DEBUG_MODE } from '@env';
 import  distance from '@turf/distance';
 import * as RNFS from 'react-native-fs';
-import Reactotron from 'reactotron-react-native';
+
 import KeepAwake from 'react-native-keep-awake';
 import I18n from "../../utils/i18n";
 import Icon from "../../utils/Icon";
@@ -68,13 +68,13 @@ ListStories = (props) => {
           <TouchableOpacity key={'tb'+i} onPress={() => props.navigate('Story', {story: story, storiesUpdate: props.storiesUpdate})}>
             <ImageBackground key={'b'+i} source={story.banner_default} imageStyle={{opacity: .6}} style={{width: '100%', height: 'auto', backgroundColor: story.theme.color1}}>
               <ListItem
-                containerStyle={{backgroundColor: 'transparent', flex: 1, justifyContent: 'center', alignItems: 'center', alignContent: 'flex-start', backgroundColor: 'transparent', }}
+                containerStyle={{backgroundColor: 'transparent', flex: 1, justifyContent: 'center', alignItems: 'center', margin: 0, alignContent: 'flex-start', backgroundColor: 'transparent', }}
                 style={styles.listItem}
                 key={'l'+i}
                 title={story.title}
-                titleStyle={{ color: 'white', fontFamily: story.theme.font1, fontSize: 26, textAlign: 'center', letterSpacing: 1, margin: 0, paddingBottom:0, paddingLeft: 35, textShadowColor: 'rgba(0, 0, 0, 0.8)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 2}}
+                titleStyle={{ color: 'white', fontFamily: story.theme.font1, fontSize: 28, textAlign: 'center', letterSpacing: 1, margin: 0, paddingBottom:0, paddingLeft: 35, textShadowColor: 'rgba(0, 0, 0, 0.8)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 2}}
                 subtitle={story.city+' • '+story.state}
-                subtitleStyle={{ color: 'white', fontFamily: "ATypewriterForMe", fontSize: 14, textAlign: 'center', letterSpacing: 0, margin: 0, paddingLeft:35, textShadowColor: 'rgba(0, 0, 0, 0.8)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 1 }}
+                subtitleStyle={{ color: 'white', fontFamily: "ATypewriterForMe", fontSize: 12, textAlign: 'center', letterSpacing: 0, margin: 0, paddingLeft:35, textShadowColor: 'rgba(0, 0, 0, 0.8)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 1 }}
                 onPress={() => props.navigate('Story', {story: story, storiesUpdate: props.storiesUpdate})}
                 bottomDivider
                 chevron
@@ -100,8 +100,10 @@ export default class Stories extends Component {
       server: this.props.screenProps.server,
       appName: this.props.screenProps.appName,
       appDir: this.props.screenProps.AppDir,
+      debug_mode: (DEBUG_MODE && DEBUG_MODE === "true") ? true : false,
       stories: stories,
-      storiesURL: this.props.screenProps.server + '/stories',
+      storiesURL: this.props.screenProps.storiesURL,
+      storiesAllURL: this.props.screenProps.storiesAllURL,
       bannerPath: this.props.screenProps.AppDir + '/banner/',
       granted: Platform.OS === 'ios',
       isTablet: this.props.screenProps.isTablet,
@@ -126,12 +128,14 @@ export default class Stories extends Component {
     // if tablet and landscape navigate to tabletLayout
 
     try {
+
       const initial = await Orientation.getInitialOrientation();
       if (initial === 'PORTRAIT') {
         this.setState({isLandscape: false});
       } else {
         this.setState({isLandscape: true});
       }
+      Orientation.unlockAllOrientations();
       Orientation.addOrientationListener(this._orientationDidChange);
       console.log('is tablet',this.props.screenProps.isTablet);
       console.log('is landscape',this.state.isLandscape);
@@ -185,10 +189,14 @@ export default class Stories extends Component {
     });
   }
   loadStories = async () => {
+    const {debug_mode,storiesURL, storiesAllURL } = this.state;
+    const loadURL = (!debug_mode) ? storiesURL: storiesAllURL;
+    console.log('loadURL',loadURL);
+    console.log('debug_mode',typeof(debug_mode));
     try {
       await this.networkCheck();
       Toast.showWithGravity(I18n.t("Loading","Loading"), Toast.SHORT, Toast.TOP);
-      await fetch(this.state.storiesURL, {
+      await fetch( loadURL , {
         method: 'get',
         headers: {'Access-Control-Allow-Origin': '*', credentials: 'same-origin', 'Content-Type':'application/json'}
       })
@@ -297,13 +305,15 @@ export default class Stories extends Component {
     return (
       <ThemeProvider>
         <SafeAreaView style={styles.container} forceInset={{ top: 'always', bottom: 'always' }}>
+        <ImageBackground  style={{width: 'auto', height: '100%', backgroundColor: '#C8C1B8'}} >
           <Header
-            containerStyle={{ backgroundColor: '#C8C1B8', justifyContent: 'space-around', borderWidth: 0, paddingTop: 25, paddingBottom: 25}}
-            centerComponent={<Icon name='bow-logo'  style={styles.logo}/>}
+            containerStyle={{ backgroundColor: '#C8C1B8', justifyContent: 'space-around', paddingBottom: 23 }}
+            centerComponent={<Icon name='bow-logo' size={22} containerStyle={styles.logoContainer} style={styles.logo}/>}
             rightComponent={<TouchableOpacity style={styles.reload}  onPress={() => this.storiesUpdate()}>
-            <Button type='clear' underlayColor='#FFFFFF' loading={this.state.loading} onPress={() => this.storiesUpdate()} iconContainerStyle={{ height: 24, width: 24}} icon={{name:'reload', size:22, color:'#fff', type:'booksonwall'}} ></Button>
+            <Button type='clear' underlayColor='#FFFFFF' loading={this.state.loading} onPress={() => this.storiesUpdate()} iconContainerStyle={{ height: 26, width: 26}} icon={{name:'reload', size:24, color:'#887B72', type:'booksonwall'}} ></Button>
             </TouchableOpacity>}
             />
+
           <Card style={styles.card} containerStyle={{padding: 0, margin: 0, borderWidth: 0, backgroundColor: 'transparent'}}>
           <ScrollView refreshControl={<RefreshControl progressBackgroundColor={'#8C1B8'} progressViewOffset={25} refreshing={this.state.reloadLoading} onRefresh={this.storiesUpdate} /> } style={styles.scrollView} onScrollToTop={() => this.storiesUpdate()}>
             <View style={styles.wrapList} >
@@ -311,8 +321,9 @@ export default class Stories extends Component {
               </View>
           </ScrollView>
           </Card>
-
+          </ImageBackground >
         </SafeAreaView>
+
       </ThemeProvider>
     );
   }
@@ -342,7 +353,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignContent: 'flex-start',
     backgroundColor: 'transparent',
-    minHeight: 136,
+    minHeight: 180,
   },
   listItemBackground: {
     width: '100%',
@@ -359,11 +370,14 @@ const styles = StyleSheet.create({
   },
   logo: {
     minHeight: 20,
-    color: '#9E1C00',
-    fontSize: 36,
+    color: '#91201F',
+    fontSize: 23,
     textShadowColor: 'rgba(0, 0, 0, 0.35)',
     textShadowOffset: {width: 1, height: 1},
     textShadowRadius: 3,
+  },
+  logoContainer:{
+    backgroundColor: '#fff'
   },
   reload: {
     width: 40,

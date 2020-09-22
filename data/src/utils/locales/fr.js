@@ -19,6 +19,10 @@ export default {
   ERROR_NO_INTERNET: "Erreur: Pas de connection internet !",
   ERROR_ACCESS_FILESYSTEM: "Erreur: Pas d'acces à votre système de fichier pour installer l'application !",
   NO_DATA: "Erreur: Pas de données reçues du serveur",
+  NextPath: "Aller au prochain point",
+  Getting_GPS: "Please wait , Trying to get your position ...",
+  Entering_ar: "Entering in Augmented Reality ...",
+  GetOutZone: "To continue your story , please go outside the AR search zone",
   Receiving_data: "Reception de données",
   Creating_banners: "Creation des bannières ...",
   Update_complete: "Mise à jour terminée",
@@ -43,5 +47,10 @@ export default {
   Pedestrian: "Pieton",
   Bicycle: "Bicyclette",
   Transportation: "Choisissez votre mode de transport et appuyez sur Commencer.",
-  credits: "Crédits"
+  Credits: "Crédits",
+  Rate_this: "Evaluez cette expérience",
+  Start_again: "Recommencer à nouveau",
+  Comment: "Commentaire",
+  Leave_a_message: "Deje un mensaje",
+  The_end: "La Fin",
 };

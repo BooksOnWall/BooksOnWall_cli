@@ -1,16 +1,16 @@
-import React, {Component} from 'react';
+import React, {Component, useState, useCallback} from 'react';
 import SafeAreaView from 'react-native-safe-area-view';
 import { Dimensions, PermissionsAndroid, Alert, Platform, ActivityIndicator, ScrollView, Animated, Image, StyleSheet, View, Text, I18nManager, ImageBackground, TouchableOpacity } from 'react-native';
 import { Header, Card, ListItem, Button, ThemeProvider, Icon, registerCustomIconType } from 'react-native-elements';
 import NavigationView from "./stage/NavigationView";
-import { NativeModules } from "react-native";
+import { NativeModules, TextInput } from "react-native";
 import Geolocation from '@react-native-community/geolocation';
-import { MAPBOX_KEY  } from 'react-native-dotenv';
+import { MAPBOX_KEY  } from '@env';
 import  distance from '@turf/distance';
 import HTMLView from 'react-native-htmlview';
 import RNFetchBlob from 'rn-fetch-blob';
 import * as RNFS from 'react-native-fs';
-import Reactotron from 'reactotron-react-native';
+import { Rating, AirbnbRating } from 'react-native-ratings';
 import KeepAwake from 'react-native-keep-awake';
 import I18n from "../../utils/i18n";
 import IconSet from "../../utils/Icon";
@@ -22,13 +22,16 @@ import ReactNativeParallaxHeader from 'react-native-parallax-header';
 import {unzip} from 'react-native-zip-archive';
 // import audio lib
 import Sound from 'react-native-sound';
+import {setStat} from "../stats/stats";
+import {getScores} from '../stats/score';
+
+registerCustomIconType('booksonwall', IconSet);
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 const IS_IPHONE_X = SCREEN_HEIGHT === 812 || SCREEN_HEIGHT === 896;
 const STATUS_BAR_HEIGHT = Platform.OS === 'ios' ? (IS_IPHONE_X ? 44 : 24) : 0;
-const HEADER_HEIGHT = Platform.OS === 'ios' ? (IS_IPHONE_X ? 88 : 64) : 64;
+const HEADER_HEIGHT = Platform.OS === 'ios' ? (IS_IPHONE_X ? 88 : 64) : 124;
 const NAV_BAR_HEIGHT = HEADER_HEIGHT - STATUS_BAR_HEIGHT;
-registerCustomIconType('booksonwall', IconSet);
 
 function humanFileSize(bytes, si) {
     var thresh = si ? 1000 : 1024;
@@ -45,6 +48,49 @@ function humanFileSize(bytes, si) {
     } while(Math.abs(bytes) >= thresh && u < units.length - 1);
     return bytes.toFixed(1)+' '+units[u];
 }
+const galleryPath = (storyDir, pathName) => {
+  return 'file://' + storyDir + path.replace("assets/stories", "");
+}
+const ratingCompleted = (rating) => {
+  console.log("Rating is: " + rating)
+}
+const Comments = ({theme, themeSheet,saveComment, comment }) => {
+  // const [selectedMediaUri, setSelectedMediaUri] = useState(null);
+  // const _onImageChange = useCallback(({nativeEvent}) => {
+  //   const {uri} = nativeEvent;
+  //   setSelectedMediaUri(uri);
+  // }, []);
+  return (
+    <>
+      <Text h2 style={themeSheet.title}>{I18n.t("Comment", "Comment")}</Text>
+      <TouchableOpacity style={{flex:1, flexGrow: 1,}} >
+        <Button onPress={() => {}} buttonStyle={themeSheet.button} title={I18n.t("Comment", "Leave a message")} />
+      </TouchableOpacity>
+      <TextInput
+        multiline = {true}
+        numberOfLines = {5}
+        forceStrutHeight={true}
+        onImageChange={_onImageChange}
+        placeholder="Enter Your Comment"
+        underlineColorAndroid='transparent'
+        style={{ backgroundColor: '#C0C0C0'}}
+        editable={true}
+        onPress={() => {}}
+        onChangeText={(text) => saveComment({text})}
+        value={comment}
+        />
+      <Button
+        onPress={() => {}}
+        title="Send"
+        color="#841584"
+        accessibilityLabel="Send"
+        />
+
+    </>
+  );
+
+};
+
 export default class StoryComplete extends Component {
   static navigationOptions = {
     title: 'Story Complete',
@@ -64,6 +110,7 @@ export default class StoryComplete extends Component {
     var mbbox = bbox(line);
     console.log(this.props.screenProps.AppDir);
     const storyDir = (this.props.state) ? this.props.state.appDir+'/stories/' : this.props.screenProps.AppDir +'/stories/';
+    const path = storyDir + '/stories/' + this.props.navigation.getParam('story').id + '/';
     this.state = {
       server: (this.props.state) ? this.props.state.server : this.props.screenProps.server,
       appName: (this.props.state) ? this.props.state.appName : this.props.screenProps.appName,
@@ -76,15 +123,17 @@ export default class StoryComplete extends Component {
       transportIndex: 0,
       dlIndex: null,
       dlLoading: false,
+      path: path,
       audioButton: false,
       profile: 'mapbox/walking',
       themeSheet: null,
-      initialPosition: null,
+      position: null,
       mbbox: mbbox,
-      lastPosition: null,
       styleURL: MapboxGL.StyleURL.Dark,
       fromLat: null,
       fromLong: null,
+      vote: null,
+      comment: null,
       toLat: coordinates[1],
       toLong: coordinates[0],
       distance: null,
@@ -97,6 +146,7 @@ export default class StoryComplete extends Component {
     try {
       await KeepAwake.activate();
       await this.audioPlay();
+
       if (!this.state.granted) {
         await this.requestFineLocationPermission();
       }
@@ -137,14 +187,17 @@ export default class StoryComplete extends Component {
       console.log(e);
     }
   }
+  saveComment = ({text}) => this.setState({comment: text})
   getCurrentLocation = async () => {
+    const {story, debug_mode, server, appDir, position} = this.state;
+    const sid = story.id;
     try {
       // Instead of navigator.geolocation, just use Geolocation.
       await Geolocation.getCurrentPosition(
         position => {
-          const initialPosition = position;
+          if(!debug_mode) ("Story complete", sid, null, debug_mode, server, appDir, position);
           this.setState({
-            initialPosition: initialPosition,
+            position: position,
             fromLat: position.coords.latitude,
             fromLong: position.coords.longitude});
         },
@@ -153,7 +206,7 @@ export default class StoryComplete extends Component {
       );
       this.watchID = await Geolocation.watchPosition(position => {
 
-        this.setState({LastPosition: position,fromLat: position.coords.latitude, fromLong: position.coords.longitude});
+        this.setState({position: position,fromLat: position.coords.latitude, fromLong: position.coords.longitude});
         let from = {
           "type": "Feature",
           "properties": {},
@@ -254,8 +307,7 @@ export default class StoryComplete extends Component {
       const maxIndex = (story.stages.length - 1);
       const stage = story.stages[maxIndex];
       if (stage) {
-
-        const audios = stage.onZoneLeave.filter(item => (item.type === 'audio'));
+        const audios = (stage.onZoneLeave && stage.onZoneLeave.length > 0) ? stage.onZoneLeave.filter(item => (item.type === 'audio')) : [];
         const count =  audios.length;
         this.setState({audioButton: true});
         console.log(count);
@@ -349,7 +401,7 @@ export default class StoryComplete extends Component {
 
   }
   renderContent = () => {
-    const {theme, story, distance, transportIndex, dlIndex,  access_token, profile, granted, fromLat, fromLong, toLat, toLong } = this.state;
+    const {theme, story, distance, vote, comment, transportIndex, dlIndex,  access_token, profile, granted, fromLat, fromLong, toLat, toLong } = this.state;
     const transportbuttons = [ I18n.t('Auto'),  I18n.t('Pedestrian'),  I18n.t('Bicycle')];
     const themeSheet = StyleSheet.create({
       title: {
@@ -362,29 +414,28 @@ export default class StoryComplete extends Component {
       credits: {
         backgroundColor: story.theme.color2,
         fontFamily: 'Roboto-Regular',
-        paddingTop: 60,
-        paddingBottom: 60,
-        paddingHorizontal: 26,
         color: story.theme.color3,
+        padding: 45,
       },
       sinopsys: {
-        paddingTop: 40,
-        paddingBottom: 50,
-        paddingHorizontal: 32,
         backgroundColor: '#D8D8D8',
+        padding: 40,
+        paddingTop: 60,
+        paddingLeft: 45,
+        paddingBottom: 55,
       },
       subtitle: {
         fontWeight: 'bold',
         padding: 0,
         marginTop: 0,
-        marginBottom: 30,
+        marginBottom: 50,
         fontSize: 12,
         textTransform: 'uppercase',
         fontFamily: 'Roboto-bold',
         color: story.theme.color3,
       },
       NavButton: {
-        backgroundColor: story.theme.color1,
+        backgroundColor: story.theme.color2,
         borderWidth: 0,
         margin: 0,
       },
@@ -398,12 +449,11 @@ export default class StoryComplete extends Component {
         height: 50
       },
       distance: {
-        color: '#FFF',
-        fontWeight: 'bold',
-        fontSize: 16,
+        color: story.theme.color2,
+        fontSize: 14,
         textAlign: 'center',
-        paddingTop: 5,
-        fontFamily: 'Roboto-Regular'
+        paddingTop: 8,
+        fontFamily: 'RobotoCondensed-Regular'
       },
       message: {
         fontSize: 12,
@@ -427,61 +477,85 @@ export default class StoryComplete extends Component {
       },
       b: { fontFamily: 'Roboto-bold'
       },
-      menu: {
-        flex: 1,
-        margin: 0,
-        padding: 0,
-        backgroundColor: story.theme.color1,
-      },
-      nav: { flex: 1, justifyContent: 'center', alignItems: 'flex-start', flexWrap: 'wrap-reverse', flexDirection: 'row', paddingHorizontal: 4, paddingVertical: 6 },
-      button: { marginHorizontal: 1, backgroundColor: 'rgba(0, 0, 0, 0.10)'}
+      nav: { flex: 1, justifyContent: 'center', alignItems: 'flex-start', flexWrap: 'wrap-reverse', flexDirection: 'row', paddingHorizontal: 6, paddingVertical: 6 },
+      button: { marginHorizontal: 3, backgroundColor: story.theme.color2}
       });
     const creditsThemeSheet = StyleSheet.create({
       p: {
           fontSize: 16,
-          lineHeight: 20,
+          lineHeight: 19,
           letterSpacing: 0,
           fontFamily: 'Roboto-Regular',
           color: story.theme.color3,
+          marginTop: 0,
+          marginBottom: 0,
+          marginHorizontal: 0,
+        },
+        br: {
+          marginTop: 0,
+          marginBottom: 0,
+          paddingTop: 0,
+          paddingBottom: 0,
+          paddingHorizontal: 0,
+          paddingVertical: 0,
+          lineHeight: 0,
         },
         b: {
-          fontFamily: 'Roboto-bold'},
-          container: {
-          flex: 1,
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          backgroundColor: '#D8D8D8',
-          padding: 0,
+          fontFamily: 'Roboto-bold',
+        },
+        container: {
+          marginTop: 5,
+          marginBottom: 5,
+          paddingTop: 0,
+          paddingBottom: 0,
+          paddingHorizontal: 0,
+          paddingVertical: 0,
+        },
+        span: {
+          marginTop: 0,
+          marginBottom: 0,
+          paddingTop: 0,
+          paddingBottom: 0,
+          paddingHorizontal: 0,
+          paddingVertical: 0,
         },
         strong: {
           fontFamily: 'Roboto-bold',
-        }
+        },
+        h1: {
+          fontFamily: 'Roboto-Light',
+          fontSize: 23,
+          fontWeight: '200',
+          color: story.theme.color1,
+          marginTop: 30,
+          marginBottom: 1,
+          lineHeight: 25,
+        },
+        h2: {
+          fontSize: 17,
+          lineHeight: 22,
+          color: story.theme.color3,
+          marginTop: 10,
+          marginBottom: 50,
+        },
+        h3: {
+          fontSize: 13,
+          marginTop: 20,
+          marginBottom: 1 ,
+          fontFamily: 'RobotoCondensed-Bold',
+          textTransform: 'uppercase',
+          fontWeight: 'bold',
+          color: story.theme.color1,
+        },
+        h4: {
+          fontSize: 13,
+          textTransform: 'uppercase',
+          fontWeight: 'bold',
+          color: story.theme.color1,
+          marginTop: 5,
+          marginBottom: 1,
+        },
       });
-    const sinopsysThemeSheet = StyleSheet.create({
-      p: {
-          fontSize: 18,
-          lineHeight: 26,
-          letterSpacing: 0,
-          fontFamily: '',
-          color: '#111',
-          fontFamily: 'RobotoCondensed-Light',
-        },
-        b: {
-          fontFamily: 'Roboto-bold'
-        },
-        container: {
-          flex: 1,
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          backgroundColor: '#D8D8D8',
-          padding: 0,
-        },
-        i:{
-          fontSize: 24,
-          fontFamily: story.theme.font2
-        }
-      });
-
       const ButtonGroup = () => {
         return (
           <View style={themeSheet.nav}>
@@ -493,7 +567,6 @@ export default class StoryComplete extends Component {
             <Button buttonStyle={themeSheet.button} icon={{name: 'route',  type:'booksonwall', size: 24, color: 'white'}} onPress={() => this.launchNavigation()} />
           </TouchableOpacity>
           )}
-
           <TouchableOpacity style={{flex:1, flexGrow: 1,}} onPress={() => this.storyMap()} >
             <Button buttonStyle={themeSheet.button}  icon={{name: 'play', type:'booksonwall', size: 24, color: 'white'}} onPress={() => this.storyMap()}  />
           </TouchableOpacity>
@@ -503,9 +576,23 @@ export default class StoryComplete extends Component {
     return (
       <>
       <View style={themeSheet.card} >
+              <View style={themeSheet.rate} >
+              <Text h2 style={themeSheet.title}>{I18n.t("Rate_this", "Rate this Experience")}</Text>
+              <Rating
+                type='heart'
+                ratingColor='#3498db'
+                ratingBackgroundColor='transparent'
+                ratingCount={10}
+                imageSize={40}
+                onFinishRating={this.ratingCompleted}
+                style={{ paddingVertical: 30 }}
+              />
+            <Comments theme={theme} themeSheet={themeSheet} saveComment={this.saveComment} comment={comment}/>
+
+              </View>
               <View style={themeSheet.credits} >
-              <Text h2 style={themeSheet.subtitle}>{I18n.t("credits", "Credits")}</Text>
-              <HTMLView value={story.credits} stylesheet={creditsThemeSheet} />
+              <Text h2 style={themeSheet.subtitle}>{I18n.t("Credits", "Credits")}</Text>
+              <HTMLView  value={"<span>"+ story.credits +"</span>"} stylesheet={creditsThemeSheet} />
             </View>
       </View>
       </>
@@ -541,12 +628,13 @@ export default class StoryComplete extends Component {
     }
   }
   render() {
-      const {theme, themeSheet, story} = this.state;
+      const {theme, themeSheet, story, comment} = this.state;
 
       const Title = ({story}) => (
         <View style={styles.titleStyle}>
+          <Text h1 style={{fontSize: 45, color: "#fff", textShadowRadius: 2 , textShadowOffset: {width: 1, height: 1}, textShadowColor: 'rgba(0, 0, 0, 0.85)', letterSpacing: 1, fontFamily: story.theme.font1}}>{I18n.t("The_end", "The End")}</Text>
           <Text style={{
-            fontSize: 26,
+            fontSize: 20,
             letterSpacing: 1,
             color: "#fff",
             textShadowColor: 'rgba(0, 0, 0, 0.85)',
@@ -558,7 +646,7 @@ export default class StoryComplete extends Component {
       );
       const Reset = () => (
         <TouchableOpacity style={styles.iconLeft} onPress={() => this.resetStory()}>
-          <Button onPress={() => this.resetStory()} type='solid' underlayColor='#FFFFFF' iconContainerStyle={{ marginLeft: 2}} icon={{name:'reload', size:24, color:'#fff', type:'booksonwall'}} />
+          <Button onPress={() => this.resetStory()} type='solid' underlayColor='#FFFFFF' iconContainerStyle={{ marginLeft: 2}} icon={{name:'reload', size:24, color:'#fff', type:'booksonwall'}} title={I18n.t("Start_again", "Start Again")} />
         </TouchableOpacity>
       );
       return (
@@ -579,12 +667,14 @@ export default class StoryComplete extends Component {
           contentContainerStyle={styles.contentContainer}
           innerContainerStyle={styles.container}
       />
+
         <Reset  />
         </SafeAreaView>
       </ThemeProvider>
     );
   }
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -592,12 +682,23 @@ const styles = StyleSheet.create({
     padding: 0,
     margin: 0,
   },
+  mediaContainer: {
+    flex: 1,
+  },
+  image: {
+    width: '100%',
+    aspectRatio: 1,
+  },
+  engine: {
+    position: 'absolute',
+    right: 0,
+  },
   contentContainer: {
     flexGrow: 1,
   },
   navContainer: {
     height: HEADER_HEIGHT,
-    marginHorizontal: 10,
+    marginHorizontal: 20,
   },
   statusBar: {
     height: STATUS_BAR_HEIGHT,
@@ -621,8 +722,8 @@ const styles = StyleSheet.create({
   titleStyle: {
     flex: 1,
     flexDirection:'column',
-    alignItems:'stretch',
-    alignContent: 'stretch',
+    alignItems:'center',
+    alignContent: 'center',
     justifyContent:'center'
   },
   card: {
@@ -632,7 +733,7 @@ const styles = StyleSheet.create({
   },
   location: {
     fontFamily: 'ATypewriterForMe',
-    fontSize: 11,
+    fontSize: 9,
     textAlign: 'center',
     color: '#fff',
     textShadowColor: 'rgba(0, 0, 0, 0.85)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 1,

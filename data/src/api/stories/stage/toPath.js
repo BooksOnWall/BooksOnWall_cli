@@ -10,10 +10,12 @@ import {directionsClient} from './MapboxClient';
 import sheet from './mapbox-gl/styles/sheet';
 import I18n from "../../../utils/i18n";
 import Page from './mapbox-gl/common/Page';
-import { MAPBOX_KEY  } from 'react-native-dotenv';
+import { MAPBOX_KEY , DEBUG_MODE } from '@env';
 import RNFetchBlob from 'rn-fetch-blob';
 import * as RNFS from 'react-native-fs';
 import PulseCircleLayer from './mapbox-gl/showDirection/PulseCircleLayer';
+import  distance from '@turf/distance';
+import Geolocation from '@react-native-community/geolocation';
 // import PulseCircle from './mapbox-gl/PulseCircleLayer';
 // import audio lib
 import Sound from 'react-native-sound';
@@ -21,60 +23,15 @@ import openIcon from '../../../../assets/nav/point1.png';
 import completeIcon from '../../../../assets/nav/point2.png';
 import unknownIcon from '../../../../assets/nav/point3.png';
 
+import {getScore} from '../../stats/score';
+
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 const IS_IPHONE_X = SCREEN_HEIGHT === 812 || SCREEN_HEIGHT === 896;
 const STATUS_BAR_HEIGHT = Platform.OS === 'ios' ? (IS_IPHONE_X ? 44 : 24) : 0;
 const HEADER_HEIGHT = Platform.OS === 'ios' ? (IS_IPHONE_X ? 88 : 64) : 64;
 const NAV_BAR_HEIGHT = HEADER_HEIGHT - STATUS_BAR_HEIGHT;
 
-const styles = StyleSheet.create({
-  buttonCnt: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: 'transparent',
-    position: 'absolute',
-    bottom: 16,
-    left: 0,
-    right: 0,
-  },
-  button: {
-    borderRadius: 3,
-    backgroundColor: 'blue',
-  },
-  header: {
-    flex: 0,
-    flexDirection:'column',
-    alignItems:'stretch',
-    minHeight: STATUS_BAR_HEIGHT,
-    backgroundColor: '#750000',
-    alignContent: 'stretch',
-    justifyContent:'center'
-  },
-  footer: {
-    flex: 0,
-    flexDirection:'column',
-    alignItems:'stretch',
-    minHeight: NAV_BAR_HEIGHT,
-    margin: 0,
-    padding: 0,
-    borderWidth: 0,
-    backgroundColor: '#750000',
-    alignContent: 'stretch',
-    justifyContent:'center'
-  },
-  menu: {
-    backgroundColor: "#750000",
-  },
-  location: {
-    color: "#FFF",
-  },
-  complete: {
-    color: "#FFF",
-  },
-  headerBackground: {
-    flex: 0,
-  },
-});
+
 const iconstyles = {
   icon: {
     iconImage: ['get', 'icon'],
@@ -153,6 +110,24 @@ const circleStyles = {
 
 MapboxGL.setAccessToken(MAPBOX_KEY);
 
+const Header = ({styles, distance, theme, completed, story, index}) => (
+  <View style={styles.header}>
+    <ImageBackground source={{uri: theme.banner.filePath}} style={styles.headerBackground}>
+      <Badge  value={'Completed: ' + completed} containerStyle={{ position: 'absolute', top: 10, right: 10 }}/>
+      <Text style={{
+        fontSize: 26,
+        letterSpacing: 1,
+        color: "#fff",
+        textShadowColor: 'rgba(0, 0, 0, 0.85)',
+        textShadowOffset: {width: 1, height: 1},
+        textShadowRadius: 2,
+        fontFamily: story.theme.font1}} >{story.title}</Text>
+      <Text style={styles.location}>{story.city + ' • ' + story.state}</Text>
+      <Text style={styles.complete}>Complete: {(index+1)}/{story.stages.length} {(parseFloat(distance)*1000)}m</Text>
+    </ImageBackground>
+  </View>
+);
+
 class ToPath extends Component {
   static navigationOptions = {
     title: 'To Stage',
@@ -173,9 +148,14 @@ class ToPath extends Component {
     var line = makeLineString(storyPoints);
     var mbbox = bbox(line);
     const index = this.props.navigation.getParam('index');
-    console.log('index',index);
+    const sid = this.props.navigation.getParam('story').id;
+    const ssid = this.props.navigation.getParam('story').stages[this.props.navigation.getParam('index')].id;
+    const order = this.props.navigation.getParam('story').stages[this.props.navigation.getParam('index')].stageOrder;
+    const path = this.props.screenProps.AppDir + '/stories/'+sid+'/';
     const origin = (index > 0) ? routes[index].coordinates: location;
-    console.log('origin',origin);
+    const radius = stages[index].radius;
+    console.log('radius', radius);
+    console.log('index', index);
     this.state = {
       prevLatLng: null,
       track: null,
@@ -191,6 +171,7 @@ class ToPath extends Component {
       followUserLocation: true,
       route: null,
       stages: stages,
+      debug_mode: (DEBUG_MODE === 'true') ? true : false,
       routes: routes,
       mbbox: mbbox,
       features: {},
@@ -199,6 +180,14 @@ class ToPath extends Component {
         completeIcon: completeIcon,
         unknownIcon: unknownIcon
       },
+      timeout: 5000,
+      distance: this.props.navigation.getParam('distance'), // in kilometers
+      radius: radius, // in meters
+      position: null,
+      fromLat: null,
+      fromLong: null,
+      toLong: null,
+      toLat: null,
       offlinePack: null,
       currentPoint: null,
       routeSimulator: null,
@@ -210,7 +199,7 @@ class ToPath extends Component {
       story: this.props.navigation.getParam('story'),
       order: this.props.navigation.getParam('order'),
       index: index,
-      selected: (index+1),
+      selected: null,
       completed: null,
       audioPaused: false,
       audioButton: false,
@@ -222,7 +211,6 @@ class ToPath extends Component {
       location: [],
       position: {},
     };
-    console.log('index', index);
     this.onStart = this.onStart.bind(this);
   }
 
@@ -264,64 +252,94 @@ class ToPath extends Component {
         }),
       );
       //await findCoordinates();
+      await this.getCurrentLocation();
 
-      await navigator.geolocation.getCurrentPosition(
-        (position) => {
-          this.setState({position: position});
-          console.log('position',JSON.stringify(position));
-        },
-        (error) => Toast.showWithGravity(I18n.t("POSITION_UNKNOWN","GPS position unknown, Are you inside a building ? Please go outside."), Toast.LONG, Toast.TOP),
-        {enableHighAccuracy: true, timeout: 30000, maximumAge: 1000, distanceFilter: 1}
-      );
-
-      this.watchID = await navigator.geolocation.watchPosition((lastPosition) => {
-        var { distanceTotal, record } = this.state;
-        (this.state.index > 0) ? this.setState({lastPosition}) : this.setState({origin: lastPosition, lastPosition: lastPosition}) ;
-        if(record) {
-          var newLatLng = {latitude:lastPosition.coords.latitude, longitude: lastPosition.coords.longitude};
-          this.setState({ track: this.state.track.concat([newLatLng]) });
-          this.setState({ distanceTotal: (distanceTotal + this.calcDistance(newLatLng)) });
-          this.setState({ prevLatLng: newLatLng });
-        }
-      },
-      (error) => Toast.showWithGravity(I18n.t("POSITION_UNKNOWN","GPS position unknown, Are you inside a building ? Please go outside."), Toast.LONG, Toast.TOP),
-      {enableHighAccuracy: true, timeout: 30000, maximumAge: 1, distanceFilter: 1});
     } catch(e) {
       console.log(e);
     }
   }
+  getCurrentLocation = async () => {
+    const {story, index, timeout, radius, debug_mode} = this.state;
+
+    try {
+      // Instead of navigator.geolocation, just use Geolocation.
+      Toast.showWithGravity(I18n.t("Getting_GPS","Please wait , Trying to get your position ..."), Toast.SHORT, Toast.TOP);
+      await Geolocation.getCurrentPosition(
+        position => {
+          const initialPosition = position;
+          this.setState({
+            position,
+            fromLat: position.coords.latitude,
+            fromLong: position.coords.longitude});
+        },
+        error => Toast.showWithGravity(I18n.t("POSITION_UNKNOWN","GPS position unknown, Are you inside a building ? Please go outside."), Toast.LONG, Toast.TOP),
+        { timeout: timeout, maximumAge: 1000, enableHighAccuracy: true},
+      );
+      this.watchID = await Geolocation.watchPosition(position => {
+        this.setState({position: position,fromLat: position.coords.latitude, fromLong: position.coords.longitude});
+        let from = {
+          "type": "Feature",
+          "properties": {},
+            "geometry": {
+              "type": "Point",
+              "coordinates": [this.state.fromLong,this.state.fromLat ]
+            }
+          };
+          let to = {
+            "type": "Feature",
+            "properties": {},
+              "geometry": {
+                "type": "Point",
+                "coordinates": story.stages[index].geometry.coordinates
+              }
+            };
+          let units = I18n.t("kilometers","kilometers");
+          let dis = distance(from, to, "kilometers");
+          if (dis) {
+            this.setState({distance: dis.toFixed(3)});
+          };
+          if (dis && radius > 0 && debug_mode === false && dis <= radius && timeout > 0) this.switchToAR();
+      },
+      error => error => Toast.showWithGravity(I18n.t("POSITION_UNKNOWN","GPS position unknown, Are you inside a building ? Please go outside."), Toast.LONG, Toast.TOP),
+      {timeout: timeout, maximumAge: 1000, enableHighAccuracy: true, distanceFilter: 1},
+      );
+    } catch(e) {
+      console.log(e);
+    }
+  }
+  watchID: ?number = null;
+  cancelTimeout = () => this.setState({timeout: 0})
   componentWillUnmount() {
+    const {routeSimulator} = this.state;
+    this.cancelTimeout();
     (this.whoosh) ? this.whoosh.release() : '';
-    if (this.state.routeSimulator) {
-      this.state.routeSimulator.stop();
+    MapboxGL.offlineManager.unsubscribe('story'+this.state.story.id);
+    Geolocation.clearWatch(this.watchId);
+    this.watchID = null;
+    if (routeSimulator) {
+      routeSimulator.stop();
     }
     this.setState({unset: true});
   }
   getSelected = async() => {
     try {
-      const {AppDir, story,selected, index} = this.state;
-      console.log(AppDir);
+      const {AppDir, story} = this.state;
       // get history from file
-      const storyHF = AppDir + '/stories/' + story.id + '/complete.txt';
-      console.log(storyHF);
-      // // check if file exist
-      await RNFS.exists(storyHF)
-      .then( (exists) => {
-          if (exists) {
-              // get id from file
-              RNFetchBlob.fs.readFile(storyHF, 'utf8')
-              .then((data) => {
-                // handle the data ..
-                this.setState({completed: parseInt(data), selected: parseInt(data)});
-                return data;
-              })
-          } else {
-              RNFetchBlob.fs.createFile(storyHF, '0', 'utf8').then(()=>{
-                this.setState({completed: 0, selected: 1});
-                console.log('file created');
-              });
-          }
-      });
+      try {
+        // get history from file
+        const index = this.props.navigation.getParam('index');
+        console.log('index', index)
+        const sid = story.id;
+        const ssid = story.stages[index].id;
+        const order = story.stages[index].stageOrder;
+        const path = AppDir + '/stories/' + story.id + '/';
+        let completed = await getScore({sid, ssid, order, path, index});
+        completed = parseInt(completed);
+        mselected = (completed && completed > 0) ? completed : 1;
+        await this.setState({completed: parseInt(completed), selected: parseInt(mselected)});
+      } catch (e) {
+        console.log(e);
+      }
     } catch(e) {
       console.log(e);
     }
@@ -472,6 +490,7 @@ class ToPath extends Component {
     try {
       const name = 'story'+this.state.story.id;
       const offlinePack = await MapboxGL.offlineManager.getPack(name);
+      // .region.styleURL
       this.setState({offlinePack: offlinePack});
       return offlinePack;
     } catch(e) {
@@ -502,27 +521,44 @@ class ToPath extends Component {
     }
   }
   switchToAR = () => {
-    const {index, story, unset} = this.state;
+    const {index, story, unset, debug_mode, distance} = this.state;
+    console.log('switch2ar', index);
+    let newIndex =(parseInt(index) <= story.stages.length) ? (parseInt(index)+1) : story.stages.length;
+    console.log('newIndex', newIndex);
+    Toast.showWithGravity(I18n.t("Entering_ar","Entering in Augmented Reality ..."), Toast.SHORT, Toast.TOP);
     if(this.whoosh) this.whoosh.release();
-    console.log(unset);
-    this.setState({unset: true});
-    console.log('index', index);
-    this.props.navigation.push('ToAr', {screenProps: this.props.screenProps, story: story, index: index});
+    this.setState({unset: true, timeout: 0, index: (index+1)});
+    this.props.navigation.navigate('ToAr', {screenProps: this.props.screenProps, story: story, index: newIndex, debug: debug_mode, distance: distance});
   }
+  showDistance = () => (this.state.distance) ? (this.state.distance*1000) : ''
   renderActions() {
-    const {routeSimulator, index, audioButton, audioPaused, unset} = this.state;
-    console.log('index',index);
-    console.log('unset',unset);
+    const {routeSimulator, theme, completed, index, audioButton, audioPaused, unset, debug_mode, distance, radius} = this.state;
     if (this.state.routeSimulator) {
       return null;
     }
-    const launchAR = () => <Icon size={30} name='bow-isologo' type='booksonwall' color='#fff' onPress={() => this.switchToAR()} />;
-    const storyDestination = () => <Icon size={30} name='destiny' type='booksonwall' color='#fff' onPress={() => this.goTo(this.state.destination, false)} />;
+    const rstyles = StyleSheet.create({
+      footer: {
+        flex: 0,
+        flexDirection:'column',
+        alignItems:'stretch',
+        minHeight: NAV_BAR_HEIGHT,
+        margin: 0,
+        padding: 0,
+        borderWidth: 0,
+        backgroundColor: theme.color1,
+        alignContent: 'stretch',
+        justifyContent:'center'
+      },
+      menu: {
+        backgroundColor: theme.color1,
+      }
+    });
     const storyLocation = () => <Icon size={30} name='location' type='booksonwall' color='#fff' onPress={() => this.goTo([this.state.position.coords.longitude,this.state.position.coords.latitude], true)} />;
-    const storyOrigin = () => (index > 0) ? <Icon size={30} name='origin' type='booksonwall' color='#fff' onPress={() => this.goTo(this.state.origin, false)} /> :<Icon size={30} name='route' type='booksonwall' color='#fff' onPress={() => this.launchNavigation()} />;
+    const storyDestination = () => <Icon size={30} name='destiny' type='booksonwall' color='#fff' onPress={() => this.goTo(this.state.destination, false)} />;
+    const storyOrigin = () =>  <Icon size={30} name='origin' type='booksonwall' color='#fff' onPress={() => this.goTo(this.state.origin, false)} />;
+    const launchAR = () =>  <Icon size={30} name='bow-isologo' type='booksonwall' color='#fff' onPress={() => this.switchToAR()} />;
+    const launchNavigation = () => <Icon size={30} name='route' type='booksonwall' color='#fff' onPress={() => this.launchNavigation()} />;
     const sound = () => {
-      console.log('audioButton', audioButton);
-      console.log('audioPaused', audioPaused);
         if(audioButton && audioPaused) {
           return <Icon size={30} name='play' type='booksonwall' color='#fff' onPress={() => this.togglePlaySound()} />;
         } else if (audioButton && !audioPaused) {
@@ -533,11 +569,19 @@ class ToPath extends Component {
     };
 
     const storyMapDl = () => <Icon size={30} name='download' type='booksonwall' color='#fff' onPress={() => this.offlineSave()} />;
-    const MenuButtons = [  { element: storyLocation }, { element: storyOrigin}, { element: storyDestination },{ element: launchAR }, { element: storyMapDl}, {element: sound} ];
+    let MenuButtons = [];
+    MenuButtons.push({ element: storyLocation});
+    MenuButtons.push({ element: launchNavigation});
+    if (completed > 0) MenuButtons.push({ element: storyOrigin});
+    MenuButtons.push({ element: storyDestination });
+    if((!debug_mode && ((distance*1000) <= radius)) || debug_mode) MenuButtons.push({ element: launchAR });
+    MenuButtons.push({ element: storyMapDl});
+    if(sound !== null) MenuButtons.push({element: sound});
+
 
     return (
-      <View style={styles.footer}>
-        <ButtonGroup style={styles.menu}
+      <View style={rstyles.footer}>
+        <ButtonGroup style={rstyles.menu}
           buttonStyle={{ backgroundColor: 'transparent', borderWidth: 0, borderColor: '#4B4F53', margin: 0, minHeight: 44, maxHeight: 44}}
           onPress={this.updateMenu}
           selectedIndex={this.state.selectedMenu}
@@ -661,7 +705,7 @@ class ToPath extends Component {
   launchNavigation = () => {
     const {story,fromLat, fromLong, toLat, toLong} = this.state;
     this.whoosh.release();
-    this.setState({unset: true});
+    this.setState({unset: true, timeout: 0});
     NativeModules.MapboxNavigation.navigate(
       fromLat,
       fromLong,
@@ -680,29 +724,52 @@ class ToPath extends Component {
     return (!this.state.audioPaused) ? this.whoosh.pause() : this.whoosh.play();
   }
   render() {
-    const {unset, distanceTotal, completed, selected, theme, story, index} = this.state;
-    const Header = () => (
-      <View style={styles.header}>
-        <ImageBackground source={{uri: theme.banner.filePath}} style={styles.headerBackground}>
-          <Badge  value={'Completed: ' + completed} containerStyle={{ position: 'absolute', top: 10, right: 10 }}/>
-          <Text style={{
-            fontSize: 26,
-            letterSpacing: 1,
-            color: "#fff",
-            textShadowColor: 'rgba(0, 0, 0, 0.85)',
-            textShadowOffset: {width: 1, height: 1},
-            textShadowRadius: 2,
-            fontFamily: story.theme.font1}} >{story.title}</Text>
-          <Text style={styles.location}>{story.city + ' • ' + story.state}</Text>
-          <Text style={styles.complete}>Complete: {(this.state.index+1)}/{story.stages.length} {distanceTotal}m</Text>
-        </ImageBackground>
-
-      </View>
-    );
+    const {unset, completed, selected, theme, story, index, distance, radius, debug_mode} = this.state;
     if(unset) return null;
+    const styles = StyleSheet.create({
+      buttonCnt: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        backgroundColor: 'transparent',
+        position: 'absolute',
+        bottom: 16,
+        left: 0,
+        right: 0,
+      },
+      button: {
+        borderRadius: 3,
+        backgroundColor: 'blue',
+      },
+      header: {
+        flex: 0,
+        flexDirection:'column',
+        alignItems:'stretch',
+        minHeight: STATUS_BAR_HEIGHT,
+        backgroundColor: '#750000',
+        alignContent: 'stretch',
+        justifyContent:'center'
+      },
+
+      location: {
+        color: "#FFF",
+      },
+      complete: {
+        color: "#FFF",
+      },
+      headerBackground: {
+        flex: 0,
+      },
+    });
     return (
       <Page {...this.props}>
-        <Header />
+        <Header
+          distance={distance}
+          theme={theme}
+          completed={completed}
+          story={story}
+          styles={styles}
+          index={index}
+          />
         <MapboxGL.MapView
           logoEnabled={false}
           compassEnabled={true}

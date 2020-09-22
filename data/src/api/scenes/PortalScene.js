@@ -1,7 +1,7 @@
 'use strict';
 
 import React, { Component } from 'react';
-import {SafeAreaView,ActivityIndicator, Button, Text,StyleSheet, TouchableHighlight} from 'react-native';
+import {SafeAreaView, StyleSheet} from 'react-native';
 import {
   ViroConstants,
   ViroARScene,
@@ -19,6 +19,9 @@ import {
   ViroAmbientLight
 } from 'react-viro';
 import KeepAwake from 'react-native-keep-awake';
+import {Patricie} from './Patricie';
+
+import I18n from "../../utils/i18n";
 
 export default class PortalScene extends Component {
   constructor(props) {
@@ -45,6 +48,12 @@ export default class PortalScene extends Component {
       MatchAudioPaused: true,
       MatchAudioMuted: false,
       MatchAudioLoop: false,
+      finishAll: false,
+      animate: {name: 'movePicture'},
+      text : I18n.t("NextPath", "Go to the next point"),
+      theme: params.theme,
+      fontFamily: params.theme.font1,
+      color: params.theme.color2,
       audios: [],
       video: {},
       audioLoop: false,
@@ -152,8 +161,11 @@ export default class PortalScene extends Component {
       this.setState({ buttonStateTag: "onTap" });
   }
   render = () => {
+    const {finishAll, animate, fontFamily, color} =this.state;
     const {audioPaused, audioMuted} = this.props.sceneNavigator.viroAppProps;
     console.log('audioPaused', audioPaused);
+    const font = String(fontFamily);
+    const textColor = String(color);
     return (
       <SafeAreaView>
       <ViroARScene onTrackingUpdated={this.onInitialized}  >
@@ -166,7 +178,14 @@ export default class PortalScene extends Component {
            onFinish={this.onFinishSound}
            onError={this.onErrorSound}
         />
-
+        <Patricie
+          animate={{name: 'movePicture', run: finishAll, loop: false}}
+          finishAll={finishAll}
+          goToMap={this.goToMap}
+          text={text}
+          font={font}
+          textColor={textColor}
+          />
       </ViroARScene>
       </SafeAreaView>
     );

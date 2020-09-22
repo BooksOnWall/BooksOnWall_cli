@@ -1,18 +1,21 @@
 'use strict';
 
 import React, { Component } from 'react';
-import {SafeAreaView,ActivityIndicator, Button, Text,StyleSheet, TouchableHighlight} from 'react-native';
+import {SafeAreaView, StyleSheet} from 'react-native';
 import {
   ViroConstants,
   ViroARScene,
   ViroARImageMarker,
-  ViroVideo,
   ViroMaterials,
+  ViroVideo,
   ViroSound,
   ViroARTrackingTargets,
   ViroAmbientLight
 } from 'react-viro';
 import KeepAwake from 'react-native-keep-awake';
+import {Patricie} from './Patricie';
+
+import I18n from "../../utils/i18n";
 
 export default class VaampScene extends Component {
   constructor(props) {
@@ -20,7 +23,6 @@ export default class VaampScene extends Component {
     let params = this.props.sceneNavigator.viroAppProps;
     // Set initial state here
     this.state = {
-      text : "You Found me ...",
       server: params.server,
       appName: params.appName,
       appDir: params.appDir,
@@ -39,6 +41,12 @@ export default class VaampScene extends Component {
       MatchAudioPaused: true,
       MatchAudioMuted: false,
       MatchAudioLoop: false,
+      finishAll: false,
+      animate: {name: 'movePicture'},
+      text : I18n.t("NextPath", "Go to the next point"),
+      theme: params.theme,
+      fontFamily: params.theme.font1,
+      color: params.theme.color2,
       audios: [],
       video: {},
       audioLoop: false,
@@ -74,9 +82,9 @@ export default class VaampScene extends Component {
   }
   onInitialized(state, reason) {
     if (state == ViroConstants.TRACKING_NORMAL) {
-      this.setState({
-        text : "Search for me ..."
-      });
+      // this.setState({
+      //   text : "Search for me ..."
+      // });
     } else if (state == ViroConstants.TRACKING_NONE) {
       // Handle loss of tracking
     }
@@ -179,8 +187,11 @@ export default class VaampScene extends Component {
       this.setState({ buttonStateTag: "onTap" });
   }
   render = () => {
+    const {finishAll, animate, text, fontFamily, color} = this.state;
     const {audioPaused, audioMuted} = this.props.sceneNavigator.viroAppProps;
     console.log('audioPaused', audioPaused);
+    const font = String(fontFamily);
+    const textColor = String(color);
     return (
       <SafeAreaView>
       <ViroARScene onTrackingUpdated={this.onInitialized}  >
@@ -224,6 +235,14 @@ export default class VaampScene extends Component {
                onFinish={this.onFinishSound}
                onError={this.onErrorSound}
             /> : null}
+            <Patricie
+              animate={{name: 'movePicture', run: finishAll, loop: false}}
+              finishAll={finishAll}
+              goToMap={this.goToMap}
+              text={text}
+              font={font}
+              textColor={textColor}
+              />
       </ViroARScene>
       </SafeAreaView>
     );
