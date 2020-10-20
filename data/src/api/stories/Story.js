@@ -6,6 +6,7 @@ import NavigationView from "./stage/NavigationView";
 import { NativeModules } from "react-native";
 import Geolocation from '@react-native-community/geolocation';
 import { MAPBOX_KEY , DEBUG_MODE } from '@env';
+import { withNavigationFocus } from 'react-navigation';
 import  distance from '@turf/distance';
 import HTMLView from 'react-native-htmlview';
 import RNFetchBlob from 'rn-fetch-blob';
@@ -22,8 +23,9 @@ import ReactNativeParallaxHeader from 'react-native-parallax-header';
 import {unzip} from 'react-native-zip-archive';
 import NetInfo from "@react-native-community/netinfo";
 import {getStat, setStat} from "../stats/stats";
+import {getScore} from '../stats/score';
 
-registerCustomIconType('booksonwall', IconSet);
+registerCustomIconType('booksonWall', IconSet);
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 const IS_IPHONE_X = SCREEN_HEIGHT === 812 || SCREEN_HEIGHT === 896;
@@ -46,16 +48,15 @@ function humanFileSize(bytes, si) {
     } while(Math.abs(bytes) >= thresh && u < units.length - 1);
     return bytes.toFixed(1)+' '+units[u];
 }
-export default class Story extends Component {
+class Story extends Component {
   static navigationOptions = {
     title: 'Story',
     headerShown: false
   };
   constructor(props) {
     super(props);
-
     this.loadStories = this.props.loadStories;
-    let coordinates = (this.props.story) ? this.props.story.stages[0].geometry.coordinates :this.props.navigation.getParam('story').stages[0].geometry.coordinates;
+    let coordinates = (this.props.story) ? this.props.story.stages[0].geometry.coordinates : this.props.navigation.getParam('story').stages[0].geometry.coordinates;
     const stages = (this.props.story) ? this.props.story.stages : this.props.navigation.getParam('story').stages;
     const storyPoints = stages.map((stage, i) => {
       return stage.geometry.coordinates;
@@ -81,6 +82,7 @@ export default class Story extends Component {
       themeSheet: null,
       position: null,
       mbbox: mbbox,
+      score: null,
       styleURL: MapboxGL.StyleURL.Dark,
       fromLat: null,
       fromLong: null,
@@ -92,11 +94,37 @@ export default class Story extends Component {
     this.updateDlIndex = this.updateDlIndex.bind(this);
     this.getCurrentLocation = this.getCurrentLocation.bind(this);
   }
+  getNav = async () => {
+    const {story, appDir} = this.state;
+
+      try {
+        const sid = story.id;
+        const ssid = 0;
+        const order =1;
+        const path = appDir + '/stories/'+sid+'/';
+        const score = await getScore({sid, ssid, order, path});
+
+        story.isComplete = (score.completed === story.stages.length) ? true : false;
+
+        this.setState({
+          story,
+          score,
+          timeout: 5000,
+          selected: score.selected,
+          completed: score.completed,
+          index: score.index
+        });
+        return score;
+      } catch(e) {
+        console.log(e.message);
+      }
+  }
   componentDidMount = async () => {
     try {
       await KeepAwake.activate();
       await this.networkCheck();
       await this.storyCheck();
+
       if (!this.state.granted) {
         await this.requestFineLocationPermission();
       }
@@ -112,11 +140,12 @@ export default class Story extends Component {
       this.setState({story: this.props.story});
     }
   }
+
   cancelTimeout = () => this.setState({timeout: 0})
   componentWillUnmount = async () => {
     await KeepAwake.deactivate();
-    this.cancelTimeout();
-    Geolocation.clearWatch(this.watchId);
+    await this.cancelTimeout();
+    await Geolocation.clearWatch(this.watchID);
     this.watchID = null;
   }
   networkCheck = () => {
@@ -125,40 +154,6 @@ export default class Story extends Component {
       // console.warn("Is connected?", state.isConnected);
       !state.isConnected ? Toast.showWithGravity(I18n.t("ERROR_NO_INTERNET","Error: No internet connection!"), Toast.LONG, Toast.TOP) : '';
     });
-  }
-  getSelected = async() => {
-    const {appDir, selected, index} = this.state;
-    let { story } = this.state;
-    if(this.isInstalled(story.id)) {
-      try {
-        // get history from file
-        const storyHF = appDir + '/stories/' + story.id + '/complete.txt';
-        // // check if file exist
-        await RNFS.exists(storyHF)
-        .then( (exists) => {
-            if (exists) {
-                // get id from file
-                RNFetchBlob.fs.readFile(storyHF, 'utf8')
-                .then((data) => {
-                  // handle the data ..
-                  this.setState({completed: parseInt(data), selected: parseInt(data)});
-                  if (parseInt(data) === story.stages.length) {
-                    story.isComplete = true;
-                    this.setState({story: story});
-                  }
-                  return data;
-                })
-            } else {
-                RNFetchBlob.fs.createFile(storyHF, '0', 'utf8').then(()=>{
-                  this.setState({completed: 0, selected: 1});
-                });
-            }
-        });
-        return true;
-      } catch(e) {
-        console.log(e);
-      }
-    }
   }
   updateTransportIndex = (transportIndex) => this.setState({transportIndex})
   updateDlIndex = (dlIndex) => this.setState({dlIndex})
@@ -273,11 +268,13 @@ export default class Story extends Component {
 
   }
   storyCheck = async () => {
-    let story = this.state.story;
+    let { story } = this.state;
+    const sid = story.id;
     try {
-        story.isInstalled = await this.isInstalled(story.id);
+        story.isInstalled = await this.isInstalled(sid);
         this.setState({story: story});
-        (story.isInstalled) ? await this.getSelected() : '';
+        if(story.isInstalled) await this.getNav();
+        //if(story.isInstalled) await this.getSelected();
     } catch(e) {
       console.log(e);
     }
@@ -293,8 +290,34 @@ export default class Story extends Component {
       console.log(e);
     }
   }
+  getDistance = async (position, index, story, debug_mode, radius, timeout) => {
+    let toPath = Array.from(story.stages[index].geometry.coordinates);
+    this.setState({position: position,fromLat: position.coords.latitude, fromLong: position.coords.longitude});
+    let from = {
+      "type": "Feature",
+      "properties": {},
+        "geometry": {
+          "type": "Point",
+          "coordinates": [this.state.fromLong,this.state.fromLat ]
+        }
+      };
+      let to = {
+        "type": "Feature",
+        "properties": {},
+          "geometry": {
+            "type": "Point",
+            "coordinates": toPath
+          }
+        };
+      console.log('position from', from);
+      let units = I18n.t("kilometers","kilometers");
+      let dis = distance(from, to, "kilometers");
+      if (dis) {
+        this.setState({distance: dis.toFixed(3)});
+      };
+  }
   getCurrentLocation = async () => {
-    let {timeout} = this.state;
+    let {timeout, selected, debug_mode, radius, completed , story, index} = this.state;
     try {
       // Instead of navigator.geolocation, just use Geolocation.
       await Geolocation.getCurrentPosition(
@@ -303,38 +326,18 @@ export default class Story extends Component {
             position: position,
             fromLat: position.coords.latitude,
             fromLong: position.coords.longitude});
+            this.getDistance(position, index, story, debug_mode, radius, timeout);
         },
         error => Toast.showWithGravity(I18n.t("POSITION_UNKNOWN","GPS position unknown, Are you inside a building ? Please go outside."), Toast.LONG, Toast.TOP),
         { timeout: timeout, maximumAge: 1000, enableHighAccuracy: true},
       );
       this.watchID = await Geolocation.watchPosition(position => {
-
-        this.setState({position: position,fromLat: position.coords.latitude, fromLong: position.coords.longitude});
-        let from = {
-          "type": "Feature",
-          "properties": {},
-            "geometry": {
-              "type": "Point",
-              "coordinates": [this.state.fromLong,this.state.fromLat ]
-            }
-          };
-          let to = {
-            "type": "Feature",
-            "properties": {},
-              "geometry": {
-                "type": "Point",
-                "coordinates": [this.state.toLong,this.state.toLat ]
-              }
-            };
-          console.log('position from', from);
-          let units = I18n.t("kilometers","kilometers");
-          let dis = distance(from, to, "kilometers");
-          if (dis) {
-            this.setState({distance: dis.toFixed(2)});
-          };
+        if (index && index !== story.stages.length ) {
+            this.getDistance(position, index, story, debug_mode, radius, timeout);
+        }
       },
       error => error => Toast.showWithGravity(I18n.t("POSITION_UNKNOWN","GPS position unknown, Are you inside a building ? Please go outside."), Toast.LONG, Toast.TOP),
-      {timeout: timeout, maximumAge: 1000, enableHighAccuracy: true, distanceFilter: 1},
+      {timeout: timeout, maximumAge: 3000, enableHighAccuracy: true, distanceFilter: 1},
       );
     } catch(e) {
       console.log(e);
@@ -480,12 +483,19 @@ export default class Story extends Component {
         margin: 0,
         padding: 0
       },
-      p: { fontFamily: 'Roboto-Light',
+      p: {
+        fontFamily: 'Roboto-Light',
       },
       b: { fontFamily: 'Roboto-bold'
       },
-      nav: { flex: 1, justifyContent: 'center', alignItems: 'flex-start', flexWrap: 'wrap-reverse', flexDirection: 'row', paddingHorizontal: 6, paddingVertical: 6 },
-      button: { marginHorizontal: 3, backgroundColor: story.theme.color2}
+      li: {
+        fontFamily: 'Roboto-Light',
+        fontSize: 9,
+        textTransform: 'uppercase',
+        color: story.theme.color3,
+      },
+      nav: { flex: 1, justifyContent: 'center', alignItems: 'flex-start', flexWrap: 'wrap-reverse', flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 12 },
+      button: { backgroundColor: story.theme.color2},
       });
     const creditsThemeSheet = StyleSheet.create({
       p: {
@@ -497,6 +507,7 @@ export default class Story extends Component {
           marginTop: 0,
           marginBottom: 0,
           marginHorizontal: 0,
+          textAlign: 'center'
         },
         br: {
           marginTop: 0,
@@ -578,28 +589,27 @@ export default class Story extends Component {
         container: {
           flex: 1,
           alignItems: 'center',
-          flex: 1,
           backgroundColor: '#D8D8D8',
           padding: 20,
         },
         i:{
-          fontSize: 24,
+          fontSize: 32,
           fontFamily: story.theme.font2
         }
       });
       const ButtonGroup = () => {
         return (
           <View style={themeSheet.nav}>
-          <TouchableOpacity style={{flex:1, flexGrow: 1,}} onPress={() => this.deleteStory(story.id)} >
-            <Button buttonStyle={themeSheet.button} onPress={() => this.deleteStory(story.id)} icon={{name: 'trash', type:'booksonwall', size: 24, color: 'white'}}/>
+          <TouchableOpacity style={{flex:1, flexGrow: 1, paddingHorizontal: 10}}  onPress={() => this.deleteStory(story.id)} >
+            <Button buttonStyle={themeSheet.button} onPress={() => this.deleteStory(story.id)} icon={{name: 'trash', type:'BooksonWall', size: 24, color: 'white', paddingVertical: 6}}/>
           </TouchableOpacity>
           {distance && (
-          <TouchableOpacity style={{flex:1, flexGrow: 1,}} onPress={() => this.launchNavigation()}>
-            <Button buttonStyle={themeSheet.button} icon={{name: 'route',  type:'booksonwall', size: 24, color: 'white'}} onPress={() => this.launchNavigation()} />
+          <TouchableOpacity style={{flex:2, flexGrow: 2,  paddingHorizontal: 3}} onPress={() => this.launchNavigation()}>
+            <Button buttonStyle={themeSheet.button} icon={{name: 'navi',  type:'BooksonWall', size: 32, color: 'white', paddingVertical: 2}} onPress={() => this.launchNavigation()} />
           </TouchableOpacity>
           )}
-          <TouchableOpacity style={{flex:1, flexGrow: 1,}} onPress={() => this.storyMap()} >
-            <Button buttonStyle={themeSheet.button}  icon={{name: 'play', type:'booksonwall', size: 24, color: 'white'}} onPress={() => this.storyMap()}  />
+          <TouchableOpacity style={{flex:2, flexGrow: 2,  paddingHorizontal: 3}} onPress={() => this.storyMap()} >
+            <Button buttonStyle={themeSheet.button} icon={{name: 'play', type:'BooksonWall', size: 32, color: 'white', paddingVertical: 2}} onPress={() => this.storyMap()}  />
           </TouchableOpacity>
           </View>
         );
@@ -610,7 +620,7 @@ export default class Story extends Component {
             {distance && (
               <Text style={themeSheet.distance}> {I18n.t("Distance_to_beginning", "Distance to the beginning of the story ")}: {distance} {I18n.t("Kilometers","kilometers")}</Text>
             )}
-            {(story.isInstalled) ? <ButtonGroup /> : <TouchableOpacity style={{flex:1, flexGrow: 1, padding: 10}} onPress={() => this.downloadStory(story.id)}><Button buttonStyle={themeSheet.button}  loading={this.state.dlLoading}  rounded={true} type='clear' onPress={() => this.downloadStory(story.id)}  icon={{ name: 'download', type: 'booksonwall', size: 16, color: theme.color3}} title='Descargar esta historia' titleStyle={{color: theme.color1, fontSize: 12, textTransform: 'uppercase'}}/></TouchableOpacity> }
+            {(story.isInstalled) ? <ButtonGroup /> : <View style={themeSheet.nav}><TouchableOpacity style={{flex:1, flexGrow: 1}} onPress={() => this.downloadStory(story.id)}><Button buttonStyle={themeSheet.button} loading={this.state.dlLoading} loadingProps={{ color: theme.color3 }} loadingStyle={{padding: 10}} rounded={true} type='clear' onPress={() => this.downloadStory(story.id)}  icon={{ name: 'download', type: 'booksonWall', size: 32, color: theme.color3, padding: 5}} title='Descargar esta historia' titleStyle={{color: theme.color1, fontSize: 12, textTransform: 'uppercase'}}/></TouchableOpacity></View> }
 
               <View style={themeSheet.sinopsys} >
                 <HTMLView paragraphBreak={"br"} lineBreak={"br"} addLineBreaks={false} value={story.sinopsys} stylesheet={sinopsysThemeSheet}/>
@@ -625,22 +635,29 @@ export default class Story extends Component {
       </>
     )
   }
-  renderNavBar = () => (
-    <View style={styles.navContainer}>
-      <View style={styles.statusBar} />
-      <View style={styles.navBar}>
-        <TouchableOpacity style={styles.iconLeft} onPress={() => this.props.navigation.goBack()}>
-          <Button onPress={() => this.props.navigation.goBack()} type='clear' underlayColor='#FFFFFF' iconContainerStyle={{ marginLeft: 2}} icon={{name:'left-arrow', size:24, color:'#fff', type:'booksonwall'}} />
-        </TouchableOpacity>
-      </View>
-    </View>
-  )
+  renderNavBar = () => {
+      const {theme} = this.state;
+      return (
+        <View style={styles.navContainer}>
+          <View style={styles.statusBar} />
+          <View style={styles.navBar}>
+            <TouchableOpacity style={[styles.iconLeft, {backgroundColor: theme.color2, opacity: .8}]}  onPress={() => this.props.navigation.goBack()}>
+              <Button onPress={() => this.props.navigation.goBack()} type='clear' underlayColor={theme.color1} iconContainerStyle={{ marginLeft: 2}} icon={{name:'leftArrow', size:24, color:'#fff', type:'booksonWall'}} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )
+    }
   storyMap = () => {
     const {index, story, completed, debug_mode, distance} = this.state;
-    console.log('storyMap', debug_mode);
+    this.setState({timeout: 0});
+    let newIndex = (completed && completed > 0 ) ? (completed+1) : 0;
+    console.log('story is complete', story.isComplete);
     (story.isComplete)
-    ? this.props.navigation.navigate('StoryComplete', {screenProps: this.props.screenProps, story: story, index: 0, distance: distance})
-    : this.props.navigation.navigate('StoryMap', {screenProps: this.props.screenProps, story: story, index: 0, distance: distance}) ;
+    ? this.props.navigation.push('StoryComplete', {screenProps: this.props.screenProps, story: story})
+    : (completed > 0 && debug_mode === false)
+    ? this.props.navigation.push('ToPath', {screenProps: this.props.screenProps, story: story, index: newIndex, distance: distance})
+    : this.props.navigation.push('StoryMap', {screenProps: this.props.screenProps, story: story, index: newIndex, distance: distance}) ;
   }
   toPath = () => {
     const {index, story, completed, selected, debug_mode, distance} = this.state;
@@ -652,8 +669,10 @@ export default class Story extends Component {
     (story.stages.length === completed) ? this.props.navigation.navigate('StoryComplete', {screenProps: this.props.screenProps, story: story, index: 0}) : this.props.navigation.navigate('ToAr', {screenProps: this.props.screenProps, story: story, index: 0}) ;
   }
   render() {
+      const { navigate } = this.props.navigation;
       const {theme, themeSheet, story} = this.state;
-
+      if(!this.props.isFocused) return null;
+      const size = (story.zipsize) ? ' • ' + story.zipsize : '';
       const Title = () => (
         <View style={styles.titleStyle}>
           <Text style={{
@@ -664,7 +683,7 @@ export default class Story extends Component {
             textShadowOffset: {width: 1, height: 1},
             textShadowRadius: 2,
             fontFamily: story.theme.font1}} >{story.title}</Text>
-          <Text style={styles.location}>{this.state.story.city + ' • ' + this.state.story.state}</Text>
+          <Text style={styles.location}>{story.city + ' • ' + story.state +  size  }</Text>
         </View>
       );
       return (
@@ -673,7 +692,7 @@ export default class Story extends Component {
         <ReactNativeParallaxHeader
           headerMinHeight={HEADER_HEIGHT}
           headerMaxHeight={250}
-          extraScrollHeight={30}
+          extraScrollHeight={50}
           navbarColor={story.theme.color1}
           title={<Title/>}
           titleStyle={styles.titleStyle}
@@ -703,7 +722,7 @@ const styles = StyleSheet.create({
   },
   navContainer: {
     height: HEADER_HEIGHT,
-    marginHorizontal: 20,
+    marginHorizontal: 13,
   },
   statusBar: {
     height: STATUS_BAR_HEIGHT,
@@ -747,10 +766,10 @@ const styles = StyleSheet.create({
   iconLeft: {
     width: 45,
     height: 45,
-    backgroundColor: 'rgba(0, 0, 0, .12)',
     borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 0,
   }
 });
+export default withNavigationFocus(Story);

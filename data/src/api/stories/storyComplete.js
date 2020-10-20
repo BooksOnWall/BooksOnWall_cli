@@ -1,16 +1,15 @@
-import React, {Component, useState, useCallback} from 'react';
+import React, {Component, useState, useCallback, useRef, useEffect } from 'react';
 import SafeAreaView from 'react-native-safe-area-view';
-import { Dimensions, PermissionsAndroid, Alert, Platform, ActivityIndicator, ScrollView, Animated, Image, StyleSheet, View, Text, I18nManager, ImageBackground, TouchableOpacity } from 'react-native';
-import { Header, Card, ListItem, Button, ThemeProvider, Icon, registerCustomIconType } from 'react-native-elements';
+import { Linking, Dimensions, PermissionsAndroid, Alert, Platform, ActivityIndicator, ScrollView, Animated, Image, StyleSheet, View, Text, I18nManager, ImageBackground, TouchableOpacity } from 'react-native';
+import { SocialIcon, Rating, Header, Card, ListItem, Button, ThemeProvider, Icon, registerCustomIconType } from 'react-native-elements';
 import NavigationView from "./stage/NavigationView";
 import { NativeModules, TextInput } from "react-native";
 import Geolocation from '@react-native-community/geolocation';
-import { MAPBOX_KEY  } from '@env';
+import { MAPBOX_KEY, DEBUG_MODE  } from '@env';
 import  distance from '@turf/distance';
 import HTMLView from 'react-native-htmlview';
 import RNFetchBlob from 'rn-fetch-blob';
 import * as RNFS from 'react-native-fs';
-import { Rating, AirbnbRating } from 'react-native-ratings';
 import KeepAwake from 'react-native-keep-awake';
 import I18n from "../../utils/i18n";
 import IconSet from "../../utils/Icon";
@@ -19,13 +18,19 @@ import Toast from 'react-native-simple-toast';
 import MapboxGL from '@react-native-mapbox-gl/maps';
 import {lineString as makeLineString, bbox} from '@turf/turf';
 import ReactNativeParallaxHeader from 'react-native-parallax-header';
+import MaskedView from '@react-native-community/masked-view';
+
 import {unzip} from 'react-native-zip-archive';
+const fs = RNFetchBlob.fs;
+const Blob = RNFetchBlob.polyfill.Blob;
 // import audio lib
 import Sound from 'react-native-sound';
 import {setStat} from "../stats/stats";
-import {getScores} from '../stats/score';
+import {getScores, completeStory} from '../stats/score';
+import Heart from '../../../assets/materials/heart.png';
+import BorderImage from '../../../assets/story/borderImageMask.png';
 
-registerCustomIconType('booksonwall', IconSet);
+registerCustomIconType('booksonWall', IconSet);
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 const IS_IPHONE_X = SCREEN_HEIGHT === 812 || SCREEN_HEIGHT === 896;
@@ -48,44 +53,225 @@ function humanFileSize(bytes, si) {
     } while(Math.abs(bytes) >= thresh && u < units.length - 1);
     return bytes.toFixed(1)+' '+units[u];
 }
-const galleryPath = (storyDir, pathName) => {
-  return 'file://' + storyDir + path.replace("assets/stories", "");
+const galleryPath = (storyDir, path) => {
+  return 'file://' + storyDir + path.replace("assets/stories/", "");
 }
-const ratingCompleted = (rating) => {
-  console.log("Rating is: " + rating)
+//const Bubbles = ({theme, themeSheet, comment}) => return (comment);
+const MainMenu = ({resetStory, commentLoading, theme, themeSheet, toggleComment, openComment, saveComment}) => (
+  <View style={themeSheet.nav}>
+    <TouchableOpacity style={{flex:1, flexGrow: 1,}} onPress={() => resetStory()}>
+      <Button buttonStyle={themeSheet.button} onPress={() => resetStory()} underlayColor='#FFFFFF' icon={{name:'reload', size:32, color:'#fff', type:'BooksonWall'}} title={I18n.t("Start_again", "Start Again")}/>
+    </TouchableOpacity>
+    <TouchableOpacity style={{flex:1, flexGrow: 1,}}>
+      <Button buttonStyle={themeSheet.button} onPress={()=> toggleComment()} title={I18n.t("Leave_a_message", "Leave a message")} />
+    </TouchableOpacity>
+    {openComment && openComment === true ?
+      (<TouchableOpacity  onPress={()=> saveComment()}>
+        <Button
+          onPress={() => saveComment()}
+          buttonStyle={themeSheet.button}
+          title={I18n.t('Send', 'Send')}
+          loading={commentLoading}
+          color={theme.color3}
+          accessibilityLabel="Send"
+          />
+      </TouchableOpacity>)
+    : null}
+  </View>
+);
+const Sponsors = ({gallery, storyDir, themeSheet}) => {
+  const image1 = (gallery[0]) ? galleryPath(storyDir,gallery[0].path) : null;
+  const image2 = (gallery[1]) ? galleryPath(storyDir,gallery[1].path) : null;
+  return (
+    <View style={{paddingVertical: 20, flex: 1}}>
+        <Text h2 style={themeSheet.creditsSubtitle}>{I18n.t("Sponsor", "Supported by")}</Text>
+        {gallery[0] && <Image style={{flexGrow: 1, width: '100%', height: 100, paddingHorizontal: 0, resizeMode: 'contain'}} source={{uri: image1}} />}
+        <Text h2 style={themeSheet.creditsSubtitle}>{I18n.t("Collaborator", "Collaborated by")}</Text>
+        {gallery[1] && <Image style={{flexGrow: 1, width: '100%', height: 100, paddingHorizontal: 0, resizeMode: 'contain'}}  source={{uri: image2}} />}
+    </View>
+  );
+};
+const Social = ({ resetStory, theme, themeSheet }) => {
+  const fadeAnim = useRef(new Animated.Value(0)).current  // Initial
+  const slideIn = useRef(new Animated.Value(0)).current  // Initial
+  useEffect(() => {
+    Animated.timing(
+      fadeAnim,
+      {
+        toValue: 1,
+        duration: 1000,
+      }
+    ).start();
+    Animated.timing(
+      slideIn,
+      {
+        toValue: 56,
+        duration: 1000,
+      }
+    ).start();
+  }, [fadeAnim, slideIn]);
+
+  return (
+    <Animated.View                 // Special animatable View
+      style={[{
+        opacity: fadeAnim,         // Bind opacity to animated value
+        height: slideIn,
+      }, styles.social , {backgroundColor: theme.color1, flex:1, flexGrow: 1, paddingHorizontal: 30, paddingVertical:100} ]}
+    >
+
+      <SocialIcon
+        onPress={() => { Linking.openURL('https://twitter.com/booksonwall') }}
+        type='twitter'
+        style={{flex:1, padding: 10}}
+      />
+      <SocialIcon
+        onPress={() => { Linking.openURL('https://www.facebook.com/booksonwall/') }}
+        type='facebook'
+        style={{flex:1, padding: 10}}
+      />
+      <SocialIcon
+        onPress={() => { Linking.openURL('https://www.instagram.com/booksonwall/') }}
+        type='instagram'
+        style={{flex:1, padding: 10}}
+      />
+      <SocialIcon
+        onPress={() => { Linking.openURL('https://www.youtube.com/channel/UCNWiz7RDGgoM3HHgoYPAS3w/') }}
+        type='youtube'
+        style={{flex:1, padding: 10}}
+      />
+      <SocialIcon
+        onPress={() => { Linking.openURL('https://t.me/booksonwall') }}
+        type='telegram'
+        style={{flex:1, padding: 10}}
+      />
+    </Animated.View>
+  );
 }
-const Comments = ({theme, themeSheet,saveComment, comment }) => {
-  // const [selectedMediaUri, setSelectedMediaUri] = useState(null);
-  // const _onImageChange = useCallback(({nativeEvent}) => {
-  //   const {uri} = nativeEvent;
-  //   setSelectedMediaUri(uri);
-  // }, []);
+const blobImage = async (uri) => {
+  try {
+    const max = uri.split('/').length;
+    const ext = uri.split('/')[max-1].split('.')[1];
+    return await RNFetchBlob.fs.readFile(uri, 'base64')
+    .then((data) => {
+      //console.log(data);
+      return `data:image/${ext};base64,${data}`;
+    });
+    } catch(e) {
+      console.log(e.message);
+    }
+  }
+
+
+const Bubbles = ({comment, theme, themeSheet}) => {
+  return comment.map((line,i) => {
+    return (line.type === 'image') ? <Image style={[styles.bubble,styles.image]} key={line.key} source={{uri: line.content }} /> : <Text style={{color: theme.color3}} key={line.key}>{line.content}</Text>
+  });
+}
+const Comments = ({theme, themeSheet, openComment, commentLoading, handleCommentLine, addToComment, saveComment, saveLine, comment, commentLine }) => {
+  const [selectedMediaUri, setSelectedMediaUri] = useState(null);
+  const animate = () => {
+    (openComment) ? slideIn() : slideOut();
+    (openComment) ? fadeIn() : fadeOut();
+  };
+  const _onImageChange = useCallback(async ({nativeEvent}) => {
+    try  {
+      const {uri, linkUri, mime, data} = nativeEvent;
+      const base64 = await blobImage(uri);
+      await addToComment(base64, 'image');
+      await setSelectedMediaUri(uri);
+      if(base64) {
+        await setSelectedMediaUri(null);
+      }
+    } catch(e) {
+      console.log(e);
+    }
+  }, []);
+
+
+  // fadeAnim will be used as the value for opacity. Initial Value: 0
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
+
+  const fadeIn = () => {
+    // Will change fadeAnim value to 1 in 5 seconds
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 1000,
+    }).start();
+  };
+
+  const fadeOut = () => {
+    // Will change fadeAnim value to 0 in 5 seconds
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 1000,
+    }).start();
+  };
+  const slideIn = () => {
+    // Will change fadeAnim value to 1 in 5 seconds
+    Animated.timing(slideAnim, {
+      toValue: 250,
+      duration: 1000,
+    }).start();
+  };
+
+  const slideOut = () => {
+    // Will change fadeAnim value to 0 in 5 seconds
+    Animated.timing(slideAnim, {
+      toValue: 0,
+      duration: 1000,
+    }).start();
+  };
+  animate();
+  //  <View><Image source={BorderImage} style={styles.borderImage}/></View>
   return (
     <>
-      <Text h2 style={themeSheet.title}>{I18n.t("Comment", "Comment")}</Text>
-      <TouchableOpacity style={{flex:1, flexGrow: 1,}} >
-        <Button onPress={() => {}} buttonStyle={themeSheet.button} title={I18n.t("Comment", "Leave a message")} />
-      </TouchableOpacity>
-      <TextInput
-        multiline = {true}
-        numberOfLines = {5}
-        forceStrutHeight={true}
-        onImageChange={_onImageChange}
-        placeholder="Enter Your Comment"
-        underlineColorAndroid='transparent'
-        style={{ backgroundColor: '#C0C0C0'}}
-        editable={true}
-        onPress={() => {}}
-        onChangeText={(text) => saveComment({text})}
-        value={comment}
-        />
-      <Button
-        onPress={() => {}}
-        title="Send"
-        color="#841584"
-        accessibilityLabel="Send"
-        />
 
+    {commentLoading ?  <View ><ActivityIndicator size="large" color="#" animating={true}/></View> : null }
+
+      <Animated.View   // Special animatable View
+      style={[{
+        opacity: fadeAnim, // Bind opacity to animated value
+        transform: [{
+          translateY: fadeAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [150, 0]  // 0 : 150, 0.5 : 75, 1 : 0
+          }),
+        }],
+        height: slideAnim,
+      }, styles.feed , {backgroundColor: theme.color2, flex:1, flexGrow: 0, paddingHorizontal: 40, borderRadius: 8} ]}
+      >
+
+      <View style={styles.commentContainer}>
+        {selectedMediaUri && (
+          <Image source={{uri: selectedMediaUri}} style={styles.image} />
+        )}
+        <View style={styles.bubbles}>
+          <Bubbles
+            theme={theme}
+            themeSheet={themeSheet}
+            comment={comment}
+            />
+        </View>
+        <TextInput
+          multiline = {false}
+          numberOfLines = {1}
+          forceStrutHeight={true}
+          onImageChange={_onImageChange}
+          placeholder="Enter Your Comment"
+          underlineColorAndroid='transparent'
+          style={[styles.textInput, { color: theme.color3, backgroundColor: theme.color2, margin: 10}]}
+          editable={true}
+          onPress={() => {}}
+          keyboardAppearance={"dark"}
+          selectTextOnFocus={true}
+          onImageInput={(image) => {console.log('image', image)}}
+          onEndEditing={text => addToComment(commentLine, 'text')}
+          onChangeText={(text) => handleCommentLine(text)}
+          defaultValue={commentLine}
+          />
+      </View>
+    </Animated.View>
     </>
   );
 
@@ -128,12 +314,16 @@ export default class StoryComplete extends Component {
       profile: 'mapbox/walking',
       themeSheet: null,
       position: null,
+      debug_mode: (DEBUG_MODE && DEBUG_MODE === "true") ? true: false,
       mbbox: mbbox,
       styleURL: MapboxGL.StyleURL.Dark,
       fromLat: null,
       fromLong: null,
-      vote: null,
-      comment: null,
+      vote: 5,
+      openComment: false,
+      comment: [],
+      commentLine: "",
+      commentLoading: false,
       toLat: coordinates[1],
       toLong: coordinates[0],
       distance: null,
@@ -143,10 +333,12 @@ export default class StoryComplete extends Component {
     this.getCurrentLocation = this.getCurrentLocation.bind(this);
   }
   componentDidMount = async () => {
+    const {story, appDir} = this.state;
     try {
       await KeepAwake.activate();
       await this.audioPlay();
-
+      const path = appDir + '/stories/'+story.id+'/';
+      await completeStory({story, path});
       if (!this.state.granted) {
         await this.requestFineLocationPermission();
       }
@@ -163,7 +355,11 @@ export default class StoryComplete extends Component {
   }
   componentWillUnmount = async () => {
     await KeepAwake.deactivate();
-    await this.whoosh.release();
+    if(this.whoosh) await this.whoosh.release();
+  }
+  ratingCompleted = async (rating) => {
+    await this.setState({vote: rating});
+    await this.saveComment();
   }
   updateTransportIndex = (transportIndex) => this.setState({transportIndex})
   updateDlIndex = (dlIndex) => this.setState({dlIndex})
@@ -187,7 +383,39 @@ export default class StoryComplete extends Component {
       console.log(e);
     }
   }
-  saveComment = ({text}) => this.setState({comment: text})
+  handleCommentLine = (text) => {
+    this.setState({commentLine: text});
+  }
+  addToComment = (content, type) => {
+    const { comment } = this.state;
+    const line = {
+      type: type,
+      content: content,
+      key: (comment && comment.length > 0) ? comment.length : 0,
+    };
+    comment.push(line);
+    this.setState({comment, commentLine: ''});
+  }
+  toggleComment = () => this.setState({openComment: !this.state.openComment})
+  saveComment = async () => {
+    const {story, appDir, debug_mode, server, position, comment, vote} = this.state;
+    this.setState({commentLoading: true});
+    try {
+      const name = "New Comment";
+      const sid = story.id;
+      const path = appDir + '/stories/' + sid +'/';
+      const ssid = null;
+      const order = null;
+      let extra = await getScores(path);
+      extra.comment = comment;
+      extra.vote = vote;
+      await setStat(name, sid, ssid , debug_mode, server, appDir, position, extra);
+      await this.setState({comment: [], commentLine: '', commentLoading: false, openComment: false});
+    } catch(e) {
+      console.log(e);
+    }
+
+  }
   getCurrentLocation = async () => {
     const {story, debug_mode, server, appDir, position} = this.state;
     const sid = story.id;
@@ -226,7 +454,7 @@ export default class StoryComplete extends Component {
           let units = I18n.t("kilometers","kilometers");
           let dis = distance(from, to, "kilometers");
           if (dis) {
-            this.setState({distance: dis.toFixed(2)});
+            this.setState({distance: dis.toFixed(3)});
           };
       },
       error => error => Toast.showWithGravity(I18n.t("POSITION_UNKNOWN","GPS position unknown, Are you inside a building ? Please go outside."), Toast.LONG, Toast.TOP),
@@ -266,39 +494,7 @@ export default class StoryComplete extends Component {
       // access_token
     );
   }
-  deleteStory = async (sid) => {
-    try {
-      await Alert.alert(
-        I18n.t("Delete_story","Delete Story"),
-        I18n.t("Are_u_Sure","Are you sure you want to do this ?"),
-        [
-          {text: I18n.t("Later","Ask me later"), onPress: () => console.log('Ask me later pressed')},
-          {
-            text: I18n.t("Cancel", "Cancel"),
-            onPress: () => console.log('Cancel Pressed'),
-            style: 'cancel',
-          },
-          {text: I18n.t("Yes_destroy","Yes destroy it!"), onPress: () => this.destroyStory()},
-        ],
-        {cancelable: true},
-      );
-    } catch(e) {
-      console.log(e);
-    }
-  }
-  destroyStory = async () => {
-    try {
-      let sid = this.state.story.id;
-      let storyPath = this.state.appDir+'/stories/'+sid;
-      await RNFetchBlob.fs.unlink(storyPath).then(success => {
-        Toast.showWithGravity(I18n.t("Story_deleted","Story deleted !"), Toast.LONG, Toast.TOP);
-        return this.storyCheck();
-      });
-    } catch(e) {
-      console.log(e.message);
-    }
 
-  }
   whoosh = null
   audioPlay = async () => {
     try {
@@ -401,15 +597,28 @@ export default class StoryComplete extends Component {
 
   }
   renderContent = () => {
-    const {theme, story, distance, vote, comment, transportIndex, dlIndex,  access_token, profile, granted, fromLat, fromLong, toLat, toLong } = this.state;
+    const {theme, story, distance, storyDir, vote, comment, openComment, commentLine, commentLoading, transportIndex, dlIndex,  access_token, profile, granted, fromLat, fromLong, toLat, toLong } = this.state;
     const transportbuttons = [ I18n.t('Auto'),  I18n.t('Pedestrian'),  I18n.t('Bicycle')];
+    const gallery = theme.gallery;
     const themeSheet = StyleSheet.create({
       title: {
         fontFamily: story.theme.font1,
         color: '#fff',
+        fontSize: 20,
+        paddingTop: 40,
+        paddingHorizontal: 40,
+      },
+      rateTitle: {
+        fontSize: 18,
+        paddingHorizontal: 40,
+        paddingTop: 40,
+        color: story.theme.color2,
+        flexGrow: 1,
+        alignSelf: 'center',
+        textAlign: 'center',
       },
       card:{
-        backgroundColor: story.theme.color1,
+        backgroundColor: '#ffffff',
       },
       credits: {
         backgroundColor: story.theme.color2,
@@ -433,6 +642,16 @@ export default class StoryComplete extends Component {
         textTransform: 'uppercase',
         fontFamily: 'Roboto-bold',
         color: story.theme.color3,
+      },
+      creditsSubtitle:{
+        fontWeight: 'bold',
+        padding: 0,
+        marginTop: 30,
+        marginBottom: 10,
+        fontSize: 12,
+        textTransform: 'uppercase',
+        fontFamily: 'Roboto-bold',
+        color: story.theme.color1,
       },
       NavButton: {
         backgroundColor: story.theme.color2,
@@ -477,7 +696,7 @@ export default class StoryComplete extends Component {
       },
       b: { fontFamily: 'Roboto-bold'
       },
-      nav: { flex: 1, justifyContent: 'center', alignItems: 'flex-start', flexWrap: 'wrap-reverse', flexDirection: 'row', paddingHorizontal: 6, paddingVertical: 6 },
+      nav: { backgroundColor: story.theme.color1, flex: 1, justifyContent: 'center', alignItems: 'flex-start', flexWrap: 'wrap-reverse', flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 12},
       button: { marginHorizontal: 3, backgroundColor: story.theme.color2}
       });
     const creditsThemeSheet = StyleSheet.create({
@@ -556,44 +775,50 @@ export default class StoryComplete extends Component {
           marginBottom: 1,
         },
       });
-      const ButtonGroup = () => {
-        return (
-          <View style={themeSheet.nav}>
-          <TouchableOpacity style={{flex:1, flexGrow: 1,}} onPress={() => this.deleteStory(story.id)} >
-            <Button buttonStyle={themeSheet.button} onPress={() => this.deleteStory(story.id)} icon={{name: 'trash', type:'booksonwall', size: 24, color: 'white'}}/>
-          </TouchableOpacity>
-          {distance && (
-          <TouchableOpacity style={{flex:1, flexGrow: 1,}} onPress={() => this.launchNavigation()}>
-            <Button buttonStyle={themeSheet.button} icon={{name: 'route',  type:'booksonwall', size: 24, color: 'white'}} onPress={() => this.launchNavigation()} />
-          </TouchableOpacity>
-          )}
-          <TouchableOpacity style={{flex:1, flexGrow: 1,}} onPress={() => this.storyMap()} >
-            <Button buttonStyle={themeSheet.button}  icon={{name: 'play', type:'booksonwall', size: 24, color: 'white'}} onPress={() => this.storyMap()}  />
-          </TouchableOpacity>
-          </View>
-        );
-      };
+
     return (
       <>
-      <View style={themeSheet.card} >
-              <View style={themeSheet.rate} >
-              <Text h2 style={themeSheet.title}>{I18n.t("Rate_this", "Rate this Experience")}</Text>
-              <Rating
-                type='heart'
-                ratingColor='#3498db'
-                ratingBackgroundColor='transparent'
-                ratingCount={10}
-                imageSize={40}
-                onFinishRating={this.ratingCompleted}
-                style={{ paddingVertical: 30 }}
-              />
-            <Comments theme={theme} themeSheet={themeSheet} saveComment={this.saveComment} comment={comment}/>
+      <MainMenu saveComment={this.saveComment} commentLoading={commentLoading} toggleComment={this.toggleComment} openComment={openComment} resetStory={this.resetStory} theme={theme} themeSheet={themeSheet} />
+      <Comments
+        addToComment={this.addToComment}
+        commentLoading={commentLoading}
+        saveLine={this.saveLine}
+        theme={theme}
+        openComment={openComment}
+        themeSheet={themeSheet}
+        saveComment={this.saveComment}
+        handleCommentLine={this.handleCommentLine}
+        comment={comment}
+        commentLine={commentLine}
+      />
+      <View style={themeSheet.card } >
 
+        {commentLoading ?  <View ><ActivityIndicator size="large" color={theme.color2} animating={true}/></View> : null }
+
+              <View className={themeSheet.rate} style={ commentLoading ? {position: 'absolute', top: -200} : {}} >
+                <Text h1 style={themeSheet.rateTitle}>{I18n.t("Rate_this", "Rate this Experience")}</Text>
+                <Rating
+                  fractions={1}
+                  startingValue={vote}
+                  type='custom'
+                  ratingColor='#E02020'
+                  ratingTextColor={theme.color1}
+                  reviews={["Terrible", "Bad", "Meh", "OK", "Good", "Hmm...", "Very Good", "Wow", "Amazing", "Unbelievable", "Jesus"]}
+                  ratingImage={Heart}
+                  ratingBackgroundColor='transparent'
+                  ratingCount={7}
+                  imageSize={45}
+                  onFinishRating={this.ratingCompleted}
+                  style={{ backgroundColor: 'transparent', paddingVertical: 30 }}
+                />
               </View>
+
+              <Social theme={theme} themeSheet={themeSheet} resetStory={this.resetStory}/>
               <View style={themeSheet.credits} >
-              <Text h2 style={themeSheet.subtitle}>{I18n.t("Credits", "Credits")}</Text>
-              <HTMLView  value={"<span>"+ story.credits +"</span>"} stylesheet={creditsThemeSheet} />
-            </View>
+                <Text h2 style={themeSheet.subtitleCredits}>{I18n.t("Credits", "Credits")}</Text>
+                <HTMLView  value={"<span>"+ story.credits +"</span>"} stylesheet={creditsThemeSheet} />
+                <Sponsors theme={theme} themeSheet={themeSheet} gallery={gallery} storyDir={storyDir}/>
+              </View>
       </View>
       </>
     )
@@ -603,25 +828,22 @@ export default class StoryComplete extends Component {
     <View style={styles.statusBar} />
     <View style={styles.navBar}>
       <TouchableOpacity style={styles.iconLeft} onPress={() => this.props.navigation.navigate('Story', {screenProps: this.props.screenProps, story: this.state.story, index: 0})}>
-        <Button onPress={() => this.props.navigation.navigate('Story', {screenProps: this.props.screenProps, story: this.state.story, index: 0})} type='clear' underlayColor='#FFFFFF' iconContainerStyle={{ marginLeft: 2}} icon={{name:'left-arrow', size:24, color:'#fff', type:'booksonwall'}} />
+        <Button onPress={() => this.props.navigation.push('Story', {screenProps: this.props.screenProps, story: this.state.story})} type='clear' underlayColor='#FFFFFF' iconContainerStyle={{ marginLeft: 2}} icon={{name:'leftArrow', size:24, color:'#fff', type:'booksonWall'}} />
       </TouchableOpacity>
     </View>
   </View>
   )
   storyMap = () => this.props.navigation.navigate('StoryMap', {screenProps: this.props.screenProps, story: this.state.story, index: 0})
   launchAR = () => this.props.navigation.navigate('ToAr', {screenProps: this.props.screenProps, story: this.state.story, index: 0})
-  resetStory = () => {
-    return true;
-  }
   resetStory = async () => {
     let { story, appDir } = this.state;
     try {
       let sid = story.id;
       story.isComplete = false;
-      let complete = appDir + '/stories/' + sid + '/complete.txt';
+      let complete = appDir + '/stories/' + sid + '/nav.json';
       await RNFetchBlob.fs.unlink(complete).then(success => {
         Toast.showWithGravity(I18n.t("Story_reset_complete","Story reseted !"), Toast.short, Toast.TOP);
-        return this.props.navigation.navigate('Story', {screenProps: this.props.screenProps, story: story, index: 0});
+        return this.props.navigation.push('Story', {screenProps: this.props.screenProps, story: story, index: 0});
       });
     } catch(e) {
       console.log(e.message);
@@ -632,7 +854,7 @@ export default class StoryComplete extends Component {
 
       const Title = ({story}) => (
         <View style={styles.titleStyle}>
-          <Text h1 style={{fontSize: 45, color: "#fff", textShadowRadius: 2 , textShadowOffset: {width: 1, height: 1}, textShadowColor: 'rgba(0, 0, 0, 0.85)', letterSpacing: 1, fontFamily: story.theme.font1}}>{I18n.t("The_end", "The End")}</Text>
+          <Text h1 style={{fontSize: 45, color: "#fff", textShadowRadius: 2 , textShadowOffset: {width: 1, height: 1}, textShadowColor: 'rgba(0, 0, 0, 0.85)', letterSpacing: 1 , textTransform: 'uppercase'}}>{I18n.t("The_end", "The End")}</Text>
           <Text style={{
             fontSize: 20,
             letterSpacing: 1,
@@ -644,11 +866,7 @@ export default class StoryComplete extends Component {
           <Text style={styles.location}>{this.state.story.city + ' • ' + this.state.story.state}</Text>
         </View>
       );
-      const Reset = () => (
-        <TouchableOpacity style={styles.iconLeft} onPress={() => this.resetStory()}>
-          <Button onPress={() => this.resetStory()} type='solid' underlayColor='#FFFFFF' iconContainerStyle={{ marginLeft: 2}} icon={{name:'reload', size:24, color:'#fff', type:'booksonwall'}} title={I18n.t("Start_again", "Start Again")} />
-        </TouchableOpacity>
-      );
+
       return (
       <ThemeProvider>
         <SafeAreaView style={styles.container} forceInset={{ top: 'always', bottom: 'always' }}>
@@ -667,8 +885,6 @@ export default class StoryComplete extends Component {
           contentContainerStyle={styles.contentContainer}
           innerContainerStyle={styles.container}
       />
-
-        <Reset  />
         </SafeAreaView>
       </ThemeProvider>
     );
@@ -678,15 +894,19 @@ export default class StoryComplete extends Component {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#D8D8D8',
+    backgroundColor: '#fff',
     padding: 0,
     margin: 0,
+  },
+  scriptBox: {
+    //willChange: 'width, height, left, top',
+    position: 'relative',
   },
   mediaContainer: {
     flex: 1,
   },
   image: {
-    width: '100%',
+    width: '50%',
     aspectRatio: 1,
   },
   engine: {
@@ -711,8 +931,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: 'transparent',
   },
+  commentContainer: {
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  textInput: {
+    padding: 25,
+  },
+  social: {
+    flex: 1,
+    flexDirection:'row',
+    alignItems:'center',
+    alignContent: 'center',
+    justifyContent:'center',
+    padding: 24,
+    paddingHorizontal: 20,
+  },
+  feed:{
+    zIndex: 2,
+    margin:0,
+    padding: 0,
+    // padding: 40,
+  },
   containerStyle: {
-    backgroundColor: '#C8C1B8',
+    backgroundColor: '#fff',
     justifyContent: 'space-around',
     borderWidth: 0,
     paddingTop: 25,
@@ -726,10 +969,38 @@ const styles = StyleSheet.create({
     alignContent: 'center',
     justifyContent:'center'
   },
+  bubble: {
+    backgroundColor: '#000',
+    padding: 10,
+    paddingLeft: 15,
+    paddingRight: 15,
+    borderRadius: 30,
+  },
+  bubbles :{
+    flex: 1,
+    zIndex: 1,
+    margin: 10,
+    flexDirection:'column',
+    alignItems:'center',
+    alignContent: 'center',
+    justifyContent:'center',
+    padding: 10,
+  },
+  rate : {
+    flex: 1,
+    flexDirection:'column',
+    alignItems:'center',
+    alignContent: 'center',
+    justifyContent:'center',
+    padding: 10,
+  },
   card: {
     padding: 0,
     margin: 0,
     borderWidth: 0,
+  },
+  activityContainer: {
+    color: '#FFF'
   },
   location: {
     fontFamily: 'ATypewriterForMe',
@@ -737,6 +1008,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#fff',
     textShadowColor: 'rgba(0, 0, 0, 0.85)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 1,
+  },
+  reset: {
+    flex: 1,
+    width: 'auto',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 10,
   },
   iconLeft: {
     width: 45,
@@ -746,5 +1024,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 0
-  }
+  },
+  borderImage:{
+    flexGrow: 1,
+    width: 'inherit',
+    minHeight: 20,
+    height: 20,
+  },
 });

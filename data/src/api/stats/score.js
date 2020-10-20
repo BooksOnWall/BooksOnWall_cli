@@ -7,19 +7,28 @@ import I18n from "../../utils/i18n";
 const getScore = async ({sid, ssid, order, path}) => {
   // // check if file exist
   try {
-   const storyHF = path + 'complete.txt'
+   const storyHF = path + 'nav.json';
+
    return await RNFS.exists(storyHF)
    .then( (exists) => {
+      console.log("nav exist", exists);
        if (exists) {
-           // get id from file
+           // get nav from file
            return RNFetchBlob.fs.readFile(storyHF, 'utf8')
-           .then((data) => {
-             return data;
+           .then((nav) => {
+             return JSON.parse(nav);
            })
        } else {
-           return RNFetchBlob.fs.createFile(storyHF, '0', 'utf8').then(()=>{
-             return 0;
-           });
+         const nav = {
+           index: (order > 0) ? (order-1) : 0,
+           selected: (order) ? order : 1,
+           completed: 0,
+         };
+          console.log(nav);
+          const navString = JSON.stringify(nav);
+          return RNFetchBlob.fs.createFile(storyHF, navString, 'utf8').then((data)=>{
+             return nav;
+          });
        }
    });
   } catch(e) {
@@ -27,24 +36,55 @@ const getScore = async ({sid, ssid, order, path}) => {
   }
 
 }
-const addNewIndex = async ({sid, ssid, order, path, newIndex}) => {
+const completeStory = async ({story, path}) => {
+  try {
+    const sid = story.id;
+    const order = story.stages.length;
+    const ssid = story.stages[(order-1)].id;
+    let score = await getScore({sid,ssid,order,path})
+    score["completed"] = order;
+    console.log("score",score);
+    const storyHF = path + 'nav.json'
+    await RNFS.exists(storyHF)
+    .then( (exists) => {
+        if (exists) {
+            // get write new value to file
+            // rimraf file
+            return RNFetchBlob.fs.writeFile(storyHF, JSON.stringify(score), 'utf8').then(()=>{
+            });
+
+        } else {
+            console.log("alert no nav");
+        }
+    });
+  } catch(e) {
+    console.log(e.message);
+  }
+}
+
+const addNewIndex = async ({sid, ssid, order, path, newIndex, completed}) => {
   try {
     // // check if complete need to be updated
-      const storyHF = path + 'complete.txt'
+    const nav = {
+      index: newIndex,
+      selected: (newIndex+1),
+      completed: completed,
+    };
+      const storyHF = path + 'nav.json'
       await RNFS.exists(storyHF)
       .then( (exists) => {
           if (exists) {
               // get write new value to file
               // rimraf file
-              RNFetchBlob.fs.writeFile(storyHF, JSON.stringify(newIndex), 'utf8').then(()=>{
+              return RNFetchBlob.fs.writeFile(storyHF, JSON.stringify(nav), 'utf8').then(()=>{
               });
 
           } else {
-              RNFetchBlob.fs.createFile(storyHF, JSON.stringify(newIndex), 'utf8').then(()=>{
+              return RNFetchBlob.fs.createFile(storyHF, JSON.stringify(nav), 'utf8').then(()=>{
               });
           }
       });
-      await storeTimestamp({sid, ssid, order, path, newIndex});
+      return await storeTimestamp({sid, ssid, order, path, newIndex});
   } catch(e) {
     console.log(e.message);
   }
@@ -58,6 +98,7 @@ const humanTime = (ms) => {
   humanTime = (duration._data.hours > 0 ) ? humanTime+' '+duration._data.hours: humanTime + '00';
   humanTime = (duration._data.minutes > 0 ) ? humanTime+':'+duration._data.minutes : humanTime + ':00';
   humanTime = (duration._data.seconds > 0 ) ? humanTime+':'+duration._data.seconds : humanTime + ':00';
+  console.log('humanTime', humanTime);
   return humanTime;
 }
 const getScores = async (path) => {
@@ -86,7 +127,7 @@ const storeTimestamp = async ({sid, ssid, order, path, newIndex }) => {
       .then( (exists) => {
           if (exists) {
               // get id from file
-              RNFetchBlob.fs.readFile(timeHF, 'utf8')
+             return RNFetchBlob.fs.readFile(timeHF, 'utf8')
               .then((data) => {
                 const time = Math.round((new Date()).getTime());
                 console.log('time', time);
@@ -95,21 +136,22 @@ const storeTimestamp = async ({sid, ssid, order, path, newIndex }) => {
                 let elapsed = (time-start);
                 elapsed = humanTime(elapsed);
                 const stage = {sid: sid, ssid: ssid, order: order, newIndex: newIndex, time: time, elapsed: elapsed};
-                file.stages.[index] = stage;
-                RNFetchBlob.fs.writeFile(timeHF, JSON.stringify(file), 'utf8')
-                .then((data) => {return data;})
-              })
+                file.stages[index] = stage;
+               return RNFetchBlob.fs.writeFile(timeHF, JSON.stringify(file), 'utf8')
+                .then((data) => {return data })
+              });
           } else {
               const time = Math.round((new Date()).getTime());
               const stages = [{sid: sid, ssid: ssid, order: order, newIndex: newIndex, time: time, elapsed: 0 }];
               const file = {stages: stages};
-              RNFetchBlob.fs.createFile(timeHF, JSON.stringify(file), 'utf8').then(()=>{
+             return RNFetchBlob.fs.createFile(timeHF, JSON.stringify(file), 'utf8').then(()=>{
                 return 0;
               });
           }
+          return true;
       });
     } catch(e) {
       console.log(e);
     }
 }
-export { getScore,getScores, addNewIndex, storeTimestamp, humanTime };
+export {completeStory, getScore,getScores, addNewIndex, storeTimestamp, humanTime };

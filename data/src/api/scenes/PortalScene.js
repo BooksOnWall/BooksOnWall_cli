@@ -27,19 +27,20 @@ export default class PortalScene extends Component {
   constructor(props) {
     super(props);
     let params = this.props.sceneNavigator.viroAppProps;
+    this.toogleButtonAudio = params.toggleButtonAudio;
+    this.goToMap = params.goToMap;
     // Set initial state here
     this.state = {
-      text : "You Found me ...",
       server: params.server,
       appName: params.appName,
       appDir: params.appDir,
       storyDir: params.appDir+'/stories/',
       story: params.story,
       index: params.index,
-      stage: params.stage,
-      pictures: params.pictures,
       pIndex: 0,
       scene_options: params.stage.scene_options,
+      stage: params.stage,
+      pictures: params.pictures,
       picturePath: "",
       audioPath: "",
       paused: (params.paused) ? params.paused : false,
@@ -48,17 +49,21 @@ export default class PortalScene extends Component {
       MatchAudioPaused: true,
       MatchAudioMuted: false,
       MatchAudioLoop: false,
-      finishAll: false,
+      finishAll: params.finishAll,
       animate: {name: 'movePicture'},
-      text : I18n.t("NextPath", "Go to the next point"),
+      anchorFound: false,
+      imageTracking: params.imageTracking,
+      animate: {name: 'movePicture'},
+      message : I18n.t("NextPath", "Go to the next point"),
       theme: params.theme,
-      fontFamily: params.theme.font1,
+      fontFamily: params.theme.font3,
       color: params.theme.color2,
       audios: [],
       video: {},
       audioLoop: false,
       videoPath: "",
       videoLoop: false,
+      lockVideo: false,
       onZoneEnter: params.onZoneEnter,
       onZoneLeave: params.onZoneLeave,
       onPictureMatch: params.onPictureMatch
@@ -89,9 +94,9 @@ export default class PortalScene extends Component {
   }
   onInitialized(state, reason) {
     if (state == ViroConstants.TRACKING_NORMAL) {
-      this.setState({
-        text : "Search for me ..."
-      });
+      // this.setState({
+      //   text : "Search for me ..."
+      // });
     } else if (state == ViroConstants.TRACKING_NONE) {
       // Handle loss of tracking
     }
@@ -139,10 +144,26 @@ export default class PortalScene extends Component {
       console.log(e);
     }
   }
+  onFinishAll = () => this.setState({finishAll: true})
+  onAnchorFound = e => {
+    const {lockVideo} = this.state;
+    if(!lockVideo) {
+      this.setState({lockVideo: true});
+      this.toggleButtonAudio();
+    }
+    console.log(e);
+  }
   onFinishSound = () => {
+    this.toggleButtonAudio();
     console.log("Sound terminated");
   }
+  onBufferStart = () => {
+
+    console.log("On Buffer Start");
+  }
   onFinishVideo = () => {
+    this.setState({imageTracking:  false});
+    this.loadAndPlayAudio('onPictureMatch');
     console.log("Video terminated");
   }
   onVideoError = (event) => {
@@ -161,14 +182,14 @@ export default class PortalScene extends Component {
       this.setState({ buttonStateTag: "onTap" });
   }
   render = () => {
-    const {finishAll, animate, fontFamily, color} =this.state;
+    const {index, animate, fontFamily, color, imageTracking, finishAll, theme, pIndex, scene_options, MatchAudioPath, MatchAudioLoop, MatchAudioPaused, MatchAudioMuted, audioPath, audioLoop, videoPath, videoLoop, message } = this.state;
     const {audioPaused, audioMuted} = this.props.sceneNavigator.viroAppProps;
     console.log('audioPaused', audioPaused);
-    const font = String(fontFamily);
+    const font = String(theme.font3,theme.font2,theme.font1);
     const textColor = String(color);
     return (
       <SafeAreaView>
-      <ViroARScene onTrackingUpdated={this.onInitialized}  >
+      <ViroARScene onTrackingUpdated={this.onInitialized} onAnchorFound={this.onAnchorFound} >
         <ViroSound
            paused={false}
            muted={false}
@@ -181,10 +202,11 @@ export default class PortalScene extends Component {
         <Patricie
           animate={{name: 'movePicture', run: finishAll, loop: false}}
           finishAll={finishAll}
-          goToMap={this.goToMap}
-          text={text}
+          next={this.next}
+          message={message}
+          theme={theme}
           font={font}
-          textColor={textColor}
+          textColor={color}
           />
       </ViroARScene>
       </SafeAreaView>

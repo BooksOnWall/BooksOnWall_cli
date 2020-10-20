@@ -5,6 +5,7 @@ import {SafeAreaView, StyleSheet} from 'react-native';
 import {
   ViroConstants,
   ViroARScene,
+  ViroARPlane,
   ViroARImageMarker,
   ViroMaterials,
   ViroVideo,
@@ -13,20 +14,18 @@ import {
   ViroAmbientLight
 } from 'react-viro';
 import KeepAwake from 'react-native-keep-awake';
-import I18n from "../../utils/i18n";
 import { Patricie } from './Patricie';
+import I18n from "../../utils/i18n";
 
-
-
-export default class VipScene extends Component {
+export default class GpsScene extends Component {
   constructor(props) {
     super(props);
     let params = this.props.sceneNavigator.viroAppProps;
-    // Set initial state here
-    console.log('theme',params.theme);
     this.toogleButtonAudio = params.toggleButtonAudio;
     this.goToMap = params.goToMap;
     this.next = params.next;
+    // Set initial state here
+    this.toogleButtonAudio = params.toggleButtonAudio;
     this.state = {
       server: params.server,
       appName: params.appName,
@@ -42,18 +41,18 @@ export default class VipScene extends Component {
       audioPath: "",
       paused: (params.paused) ? params.paused : false,
       muted: (params.muted) ? params.muted : false,
-      MatchAudioPath: null,
+      MatchAudioPath: false,
       MatchAudioPaused: true,
       MatchAudioMuted: false,
       MatchAudioLoop: false,
       finishAll: params.finishAll,
-      animate: {name: 'movePicture'},
       anchorFound: false,
       imageTracking: params.imageTracking,
+      animate: {name: 'movePicture'},
       message : I18n.t("NextPath", "Go to the next point"),
       theme: params.theme,
-      fontFamily: params.theme.font3,
-      color: params.theme.color1,
+      fontFamily: params.theme.font3 ,
+      color: params.theme.color2,
       audios: [],
       video: {},
       audioLoop: false,
@@ -64,8 +63,9 @@ export default class VipScene extends Component {
       onZoneLeave: params.onZoneLeave,
       onPictureMatch: params.onPictureMatch
     };
+    console.log('index', params.index);
     this.onInitialized = this.onInitialized.bind(this);
-    this.buildTrackingTargets = this.buildTrackingTargets.bind(this);
+
     this.setVideoComponent = this.setVideoComponent.bind(this);
     this.loadAndPlayAudio = this.loadAndPlayAudio.bind(this);
   }
@@ -74,7 +74,6 @@ export default class VipScene extends Component {
       await KeepAwake.activate();
       await this.dispatchMedia();
       await this.setVideoComponent();
-      await this.buildTrackingTargets();
     } catch(e) {
       console.log(e);
     }
@@ -87,49 +86,13 @@ export default class VipScene extends Component {
     }
 
   }
-  goToNext = () => {
-    this.setState({animate: 'rotate'});
-    setTimeout(() => {
-      return this.props.sceneNavigator.viroAppProps.goToNext();
-    }, 5000);
-
-  }
   onInitialized(state, reason) {
     if (state == ViroConstants.TRACKING_NORMAL) {
-
+      // this.setState({
+      //   text : "Search for me ..."
+      // });
     } else if (state == ViroConstants.TRACKING_NONE) {
       // Handle loss of tracking
-    }
-  }
-  configureAnimations = async (finishAll, loop=false) => {
-    const name ='movePicture';
-    const run = finishAll;
-    //this.setState({animate:{name, run, loop}});
-    return ({name , run, loop});
-  }
-  buildTrackingTargets = async () => {
-    const {pIndex, stage, pictures, storyDir, scene_options} = this.state;
-    try {
-        let path = pictures[0].path.replace(" ", "\ ");
-        let radius = stage.radius;
-        console.log('vip',scene_options.videos[0]);
-        let width = (scene_options.pictures && scene_options.pictures.length >0 ) ? parseFloat(scene_options.pictures[pIndex].width) : 1;
-        let height = (scene_options.pictures && scene_options.pictures.length >0 ) ? parseFloat(scene_options.pictures[pIndex].height) : 1;
-        path = 'file://' + this.state.storyDir + path.replace("assets/stories", "");
-        //this.setState({picturePath: path});
-        await ViroARTrackingTargets.createTargets({
-          "targetVIP" : {
-            source : { uri: path },
-            orientation : "Up",
-            physicalWidth : width, // real world width in meters
-            type: 'Image'
-          },
-        });
-
-       // create materials
-
-    } catch(e) {
-      console.log(e);
     }
   }
   audio = null
@@ -196,19 +159,21 @@ export default class VipScene extends Component {
   }
   toggleButtonAudio = async () => this.props.sceneNavigator.viroAppProps.toggleButtonAudio()
   onFinishAll = () => this.setState({finishAll: true})
-  onFinishSound = () => {
-    this.toggleButtonAudio();
-    console.log("Sound terminated");
-  }
   onAnchorFound = e => {
     const {lockVideo} = this.state;
+    console.log('lockVideo',lockVideo);
     if(!lockVideo) {
       this.setState({lockVideo: true});
       this.toggleButtonAudio();
     }
     console.log(e);
   }
+  onFinishSound = () => {
+    this.toggleButtonAudio();
+    console.log("Sound terminated");
+  }
   onBufferStart = () => {
+
     console.log("On Buffer Start");
   }
   onFinishVideo = () => {
@@ -231,16 +196,17 @@ export default class VipScene extends Component {
   onButtonTap() {
       this.setState({ buttonStateTag: "onTap" });
   }
-
   render = () => {
-    const {index, message,animate, fontFamily, color, imageTracking, finishAll, theme, pIndex, scene_options, MatchAudioPath, MatchAudioLoop, MatchAudioPaused, MatchAudioMuted, audioPath, audioLoop, videoPath, videoLoop } = this.state;
+    const {index, animate, fontFamily, color, imageTracking, finishAll, theme, pIndex, scene_options, MatchAudioPath, MatchAudioLoop, MatchAudioPaused, MatchAudioMuted, audioPath, audioLoop, videoPath, videoLoop, message } = this.state;
     const {audioPaused, audioMuted} = this.props.sceneNavigator.viroAppProps;
+    console.log('audioPaused', audioPaused);
+    console.log('MatchAudioPath',MatchAudioPath);
     const font = String(theme.font3,theme.font2,theme.font1);
     const textColor = String(color);
-    // <ViroARImageMarker onAnchorFound={() => this.stopAudio()} ...
+    console.log('videoPath', videoPath);
     return (
       <SafeAreaView>
-      <ViroARScene onTrackingUpdated={this.onInitialized} >
+      <ViroARScene  >
         <ViroSound
            paused={audioPaused}
            muted={audioMuted}
@@ -250,50 +216,38 @@ export default class VipScene extends Component {
            onFinish={this.onFinishSound}
            onError={this.onErrorSound}
         />
-      <ViroARImageMarker visible={imageTracking} target={"targetVIP"} onAnchorFound={this.onAnchorFound}  >
-            <ViroVideo
-              source={{uri: videoPath}}
-              dragType="FixedToWorld"
-              onDrag={()=>{}}
-              width={parseFloat(scene_options.videos[0].width)}
-              height={parseFloat(scene_options.videos[0].height)}
-              muted={false}
-              paused={false}
-              visible={imageTracking}
-              loop={videoLoop}
-              position={[0,0,0]}
-              rotation={[-90,0,0]}
-              opacity={1}
-              onBufferStart={this.onBufferStart}
-              onFinish={this.onFinishVideo}
-              onError={this.onVideoError}
-              materials={["chromaKeyFilteredVideo"]}
-            />
-        </ViroARImageMarker>
-        {(MatchAudioPath) ?
-          <ViroSound
-             paused={MatchAudioPaused}
-             muted={MatchAudioMuted}
-             source={{uri: MatchAudioPath }}
-             loop={MatchAudioLoop}
-             volume={1.0}
-             onFinish={this.onFinishAll}
-             onError={this.onErrorSound}
-          /> : null}
-          <Patricie
-            animate={{name: 'movePicture', run: finishAll, loop: false}}
-            animate2={{name: 'moveBaloon', run: finishAll, loop: false}}
-            animate3={{name:  'moveText', run: finishAll, loop: false }}
-            finishAll={finishAll}
-            theme={theme}
-            next={this.next}
-            message={message}
-            theme={theme}
-            font={font}
-            textColor={color}
-            />
+      <ViroARPlane width={parseFloat(scene_options.videos[0].width)} minHeight={parseFloat(scene_options.videos[0].height)} minWidth={parseFloat(scene_options.videos[0].width)} alignment={"Horizontal"}>
+          <ViroVideo
+            source={{uri: videoPath}}
+            dragType="FixedToWorld"
+            onDrag={()=>{}}
+            width={parseFloat(scene_options.videos[0].width)}
+            height={parseFloat(scene_options.videos[0].height)}
+            muted={false}
+            paused={false}
+            loop={videoLoop}
+            position={[0,0,0]}
+            rotation={[-90,0,0]}
+            opacity={1}
+            onBufferStart={this.onBufferStart}
+            onFinish={this.onFinishVideo}
+            onError={this.onVideoError}
+            materials={["chromaKeyFilteredVideo"]}
+          />
+        </ViroARPlane>
 
-
+        <Patricie
+          animate={{name: 'movePicture', run: finishAll, loop: false}}
+          animate2={{name: 'moveBaloon', run: finishAll, loop: false}}
+          animate3={{name:  'moveText', run: finishAll, loop: false }}
+          finishAll={finishAll}
+          theme={theme}
+          next={this.next}
+          message={message}
+          theme={theme}
+          font={font}
+          textColor={color}
+          />
       </ViroARScene>
       </SafeAreaView>
     );

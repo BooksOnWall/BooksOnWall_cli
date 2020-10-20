@@ -23,7 +23,8 @@ import {
   android,
   getAndroidId,
   getManufacturer } from 'react-native-device-info';
-registerCustomIconType('booksonwall', IconSet);
+
+registerCustomIconType('booksonWall', IconSet);
 
 const getStat = async (name, sid, ssid, debug_mode,server, AppDir, position) => {
   try {
@@ -67,6 +68,7 @@ const getStat = async (name, sid, ssid, debug_mode,server, AppDir, position) => 
 const setStat = async (name, sid, ssid , debug_mode, server, AppDir, position, extra) => {
   try {
     let stat = await getStat(name, sid, ssid, debug_mode, server, AppDir, position);
+    console.log(stat);
     if(extra) stat.data.extra = extra;
     const statURL = server + '/stat';
     await fetch( statURL , {
@@ -85,7 +87,7 @@ const setStat = async (name, sid, ssid , debug_mode, server, AppDir, position, e
     })
     .catch((error) => {
       // Your error is here!
-      console.error(error);
+      console.log(error);
     });
     return "toto";
   } catch(e) {

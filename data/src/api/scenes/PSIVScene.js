@@ -21,6 +21,9 @@ export default class PSIVScene extends Component {
   constructor(props) {
     super(props);
     let params = this.props.sceneNavigator.viroAppProps;
+    this.toogleButtonAudio = params.toggleButtonAudio;
+    this.goToMap = params.goToMap;
+    this.next = params.next;
     // Set initial state here
     this.toogleButtonAudio = params.toggleButtonAudio;
     this.state = {
@@ -42,17 +45,21 @@ export default class PSIVScene extends Component {
       MatchAudioPaused: true,
       MatchAudioMuted: false,
       MatchAudioLoop: false,
-      finishAll: false,
+      finishAll: params.finishAll,
       animate: {name: 'movePicture'},
-      text : I18n.t("NextPath", "Go to the next point"),
+      anchorFound: false,
+      imageTracking: params.imageTracking,
+      animate: {name: 'movePicture'},
+      message : I18n.t("NextPath", "Go to the next point"),
       theme: params.theme,
-      fontFamily: params.theme.font1,
+      fontFamily: params.theme.font3,
       color: params.theme.color2,
       audios: [],
       video: {},
       audioLoop: false,
       videoPath: "",
       videoLoop: false,
+      lockVideo: false,
       onZoneEnter: params.onZoneEnter,
       onZoneLeave: params.onZoneLeave,
       onPictureMatch: params.onPictureMatch
@@ -132,9 +139,9 @@ export default class PSIVScene extends Component {
       if (audios['onPictureMatch'] && audios['onPictureMatch'].length > 0 ) {
         let MatchAudio = audios['onPictureMatch'][0];
         let Matchpath = MatchAudio.path.replace(" ", "\ ");
-        Matchpath = 'file://'+ storyDir + path.replace("assets/stories", "");
+        Matchpath = 'file://'+ storyDir + Matchpath.replace("assets/stories", "");
         let Matchloop = MatchAudio.loop;
-        this.setState({'MatchAudioPath': Matchpath,'MatchAudioLoop': Matchloop });
+        this.setState({MatchAudioPath: Matchpath,MatchAudioLoop: Matchloop });
       }
       if (audios['onZoneEnter'] && audios['onZoneEnter'].length > 0 ) {
         let audio = audios['onZoneEnter'][0];
@@ -169,11 +176,25 @@ export default class PSIVScene extends Component {
       (zone === 'onPictureMatch') ? this.setState({MatchAudioPaused: false}) : this.setState({audioPaused: true});
   }
   toggleButtonAudio = async () => this.props.sceneNavigator.viroAppProps.toggleButtonAudio()
+  onFinishAll = () => this.setState({finishAll: true})
+  onAnchorFound = e => {
+    const {lockVideo} = this.state;
+    if(!lockVideo) {
+      this.setState({lockVideo: true});
+      this.toggleButtonAudio();
+    }
+    console.log(e);
+  }
   onFinishSound = () => {
     this.toggleButtonAudio();
     console.log("Sound terminated");
   }
+  onBufferStart = () => {
+
+    console.log("On Buffer Start");
+  }
   onFinishVideo = () => {
+    this.setState({imageTracking:  false});
     this.loadAndPlayAudio('onPictureMatch');
     console.log("Video terminated");
   }
@@ -193,11 +214,11 @@ export default class PSIVScene extends Component {
       this.setState({ buttonStateTag: "onTap" });
   }
   render = () => {
-    const {index, finishAll, animate,text, fontFamily, color, pIndex, scene_options, MatchaudioPath, MatchAudioLoop, MatchAudioPaused, MatchAudioMuted, audioPath, audioLoop, videoPath, videoLoop } = this.state;
+    const {index,animate, fontFamily, color, imageTracking, finishAll, theme, pIndex, scene_options, MatchAudioPath, MatchAudioLoop, MatchAudioPaused, MatchAudioMuted, audioPath, audioLoop, videoPath, videoLoop, message } = this.state;
     const {audioPaused, audioMuted} = this.props.sceneNavigator.viroAppProps;
     console.log('audioPaused', audioPaused);
     console.log('index',index);
-    const font = String(fontFamily);
+    const font = String(theme.font3,theme.font2,theme.font1);
     const textColor = String(color);
     return (
       <SafeAreaView>
@@ -211,7 +232,7 @@ export default class PSIVScene extends Component {
            onFinish={this.onFinishSound}
            onError={this.onErrorSound}
         />
-        <ViroARImageMarker target={"targetOne"} >
+        <ViroARImageMarker target={"targetOne"} onAnchorFound={this.onAnchorFound}>
             <ViroVideo
               source={{uri: videoPath}}
               dragType="FixedToWorld"
@@ -225,6 +246,7 @@ export default class PSIVScene extends Component {
               position={(scene_options.pictures[pIndex].videoPosition) ? [parseFloat(scene_options.pictures[pIndex].videoPosition.x),parseFloat(scene_options.pictures[pIndex].videoPosition.y),parseFloat(scene_options.pictures[pIndex].videoPosition.z)] : [0,0,0]}
               rotation={[-90,0,0]}
               opacity={1}
+              onBufferStart={this.onBufferStart}
               onError={this.onVideoError}
               onFinish={this.onFinishVideo}
               materials={["chromaKeyFilteredVideo"]}
@@ -232,7 +254,7 @@ export default class PSIVScene extends Component {
 
 
         </ViroARImageMarker>
-        {(MatchaudioPath) ?
+        {(MatchAudioPath) ?
           <ViroSound
              paused={MatchAudioPaused}
              muted={MatchAudioMuted}
@@ -245,10 +267,11 @@ export default class PSIVScene extends Component {
           <Patricie
             animate={{name: 'movePicture', run: finishAll, loop: false}}
             finishAll={finishAll}
-            goToMap={this.goToMap}
-            text={text}
+            next={this.next}
+            message={message}
+            theme={theme}
             font={font}
-            textColor={textColor}
+            textColor={color}
             />
       </ViroARScene>
       </SafeAreaView>

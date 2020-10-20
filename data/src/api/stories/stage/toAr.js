@@ -11,6 +11,7 @@ import {
 import { ViroARSceneNavigator} from 'react-viro';
 import { DEBUG_MODE } from '@env';
 import KeepAwake from 'react-native-keep-awake';
+import { withNavigationFocus } from 'react-navigation';
 import SafeAreaView from 'react-native-safe-area-view';
 import { ButtonGroup } from 'react-native-elements';
 import Icon from "../../../utils/Icon";
@@ -38,6 +39,8 @@ import VAAP from '../../scenes/VaapScene';
 import PORTAL from '../../scenes/PortalScene';
 import PIV from '../../scenes/PIVScene';
 import PSIV from '../../scenes/PSIVScene';
+import GPS from '../../scenes/GpsScene';
+import TOTEM from '../../scenes/TotemScene';
 /*
  TODO: Insert your API key below unneeded since v.2.17
  */
@@ -45,12 +48,12 @@ let sharedProps = {
   apiKey:"API_KEY_HERE",
 };
 let UNSET = "UNSET";
-let AR_NAVIGATOR_TYPE = "AR";
+
 
 // This determines which type of experience to launch in, or UNSET, if the user should
 // be presented with a choice of AR or VR. By default, we offer the user a choice.
 let defaultNavigatorType = "AR";
-const sceneTypes = ['Scene types', 'VIP', 'VAAP', 'VAAMP', 'Portal', 'PIV', 'PSIV', '3D'];
+const sceneTypes = ['Scene types', 'VIP', 'VAAP', 'VAAMP', 'Portal', 'PIV', 'PSIV', '3D', 'GPS', 'TOTEM'];
 
 const DebugArea = ({distance, debug}) => {
   console.log(distance);
@@ -61,15 +64,13 @@ const DebugArea = ({distance, debug}) => {
   </View>
   );
 };
-export default class ToAR extends Component {
+class ToAR extends Component {
   constructor(props) {
     super(props);
-    const index = this.props.navigation.getParam('index');
+
     const sid = this.props.navigation.getParam('story').id;
-    const ssid = this.props.navigation.getParam('story').stages[index].id;
-    const order = this.props.navigation.getParam('story').stages[index].stageOrder;
     const path = this.props.screenProps.AppDir + '/stories/'+sid+'/';
-    console.log('index', index);
+
     this.state = {
       navigatorType : defaultNavigatorType,
       server: this.props.screenProps.server,
@@ -78,7 +79,7 @@ export default class ToAR extends Component {
       story: this.props.navigation.getParam('story'),
       position: this.props.navigation.getParam('position'),
       arIndex: -1,
-      selected: 0,
+      selected: null,
       finishAll: false,
       completed: null,
       buttonaudioPaused: true,
@@ -88,48 +89,82 @@ export default class ToAR extends Component {
       imageTracking: true,
       timeout: 10000,
       distance: this.props.navigation.getParam('distance'),
-      radius: this.props.navigation.getParam('story').stages[index].radius,
+      radius: null,
       initialPosition: null,
       fromLat: null,
       fromLong: null,
       toLong: null,
       toLat: null,
       lastPosition: null,
-      scene_type: this.props.navigation.getParam('story').stages[index].scene_type,
-      scene_options: this.props.navigation.getParam('story').stages[index].scene_options,
-      index: index,
-      stage: this.props.navigation.getParam('story').stages[index],
+      scene_type: null,
+      scene_options: null,
+      index: null,
+      stage: null,
+      navigatorType : "AR",
       sharedProps : sharedProps
     }
-    console.log('index', this.props.navigation.getParam('index'));
-    console.log('stage', this.props.navigation.getParam('story').stages[this.props.navigation.getParam('index')]);
-    console.log('scene_options', this.state.scene_options);
-    console.log('scene type',sceneTypes[this.state.scene_type]);
-    console.log('selected', this.state.selected);
   }
   static navigationOptions = {
     title: 'To Augmented Reality',
     headerShown: false
   };
+  load = async () => await this.getNav()
   componentDidMount = async () => {
+    const { navigation } = this.props;
     try {
       await KeepAwake.activate();
-      await this.getSelected();
-      await this.getCurrentLocation();
+      await navigation.addListener('willFocus',this.load);
+      await this.getNav();
+      //await this.getCurrentLocation();
     } catch(e) {
       console.log(e);
     }
   }
   componentWillUnmount = async () => {
     try {
-      this.setState({timeout:0});
-      await Geolocation.clearWatch(this.watchId);
-      this.watchID = null;
-      await this.setState({ navigatorType : UNSET });
+      await this.setState({navigatorType : UNSET, timeout:0});
+      // await Geolocation.clearWatch(this.watchID);
+      // this.watchID = null;
       await KeepAwake.deactivate();
+      if(this.focusListener) this.focusListener.remove();
     } catch(e) {
       console.log(e);
     }
+  }
+  getNav = async () => {
+    const {story, appDir} = this.state;
+      try {
+        console.log('getNav');
+        const sid = story.id;
+        const path = appDir + '/stories/'+sid+'/';
+        console.log('path',path);
+        const score = await getScore({sid, ssid, order, path});
+        const index = parseInt(score.index);
+        console.log('score',score);
+        const stage = story.stages[index];
+        const ssid = parseInt(stage.id);
+        const order = parseInt(stage.stageOrder);
+        const radius = parseFloat(stage.radius);
+        const scene_type = stage.scene_type;
+        const scene_options = stage.scene_options;
+
+        this.setState({
+          score,
+          order,
+          stage,
+          radius,
+          timeout: 10000,
+          scene_type,
+          scene_options,
+          navigatorType: defaultNavigatorType,
+          selected: parseInt(score.selected),
+          completed: parseInt(score.completed),
+          index
+        });
+        return score;
+      } catch(e) {
+        console.log(e.message);
+      }
   }
   getCurrentLocation = async () => {
     let {story, index, timeout} = this.state;
@@ -137,9 +172,8 @@ export default class ToAR extends Component {
       // Instead of navigator.geolocation, just use Geolocation.
       await Geolocation.getCurrentPosition(
         position => {
-          const initialPosition = position;
           this.setState({
-            initialPosition,
+            position,
             fromLat: position.coords.latitude,
             fromLong: position.coords.longitude});
         },
@@ -147,7 +181,8 @@ export default class ToAR extends Component {
         { timeout: timeout, maximumAge: 1000, enableHighAccuracy: true},
       );
       this.watchID = await Geolocation.watchPosition(position => {
-        this.setState({lastPosition: position,fromLat: position.coords.latitude, fromLong: position.coords.longitude});
+        console.log('accuracy',position.accuracy);
+        this.setState({position: position,fromLat: position.coords.latitude, fromLong: position.coords.longitude});
         let from = {
           "type": "Feature",
           "properties": {},
@@ -168,7 +203,7 @@ export default class ToAR extends Component {
           let dis = distance(from, to, "kilometers");
           if (dis) {
             this.setState({distance: dis.toFixed(3)});
-            Toast.showWithGravity(I18n.t("GetOutZone","To continue your story , please go outside the AR search zone"), Toast.LONG, Toast.TOP);
+            //Toast.showWithGravity(I18n.t("GetOutZone","To continue your story , please go outside the AR search zone"), Toast.LONG, Toast.TOP);
           };
       },
       error => error => Toast.showWithGravity(I18n.t("POSITION_UNKNOWN","GPS position unknown, Are you inside a building ? Please go outside."), Toast.LONG, Toast.TOP),
@@ -183,73 +218,51 @@ export default class ToAR extends Component {
   reload = () => {
     this.togglePlaySound();
     this.setState({ imageTracking: false, timeout: 0, finishAll: false, navigatorType : UNSET });
-    this.props.navigation.navigate('ToAr', {screenProps: this.props.screenProps, story: this.state.story, index: this.state.index} );
+    this.props.navigation.push('ToAr', {screenProps: this.props.screenProps, story: this.state.story, index: this.state.index} );
   }
   map = () => {
     this.togglePlaySound();
     this.setState({ imageTracking: false, buttonaudioPaused: true, audioPaused: true, timeout: 0, finishAll: false, navigatorType : UNSET });
     this.props.navigation.navigate('ToPath', {screenProps: this.props.screenProps, story: this.state.story, index: this.state.index} );
   }
-
-  getSelected = async() => {
-      let {appDir, story, selected} = this.state;
-
-      try {
-        // get history from file
-        const index = this.props.navigation.getParam('index');
-        const storyHF = appDir + '/stories/' + story.id + '/complete.txt';
-        const sid = story.id;
-        let ssid = story.stages[index].id;
-        let order = story.stages[index].stageOrder;
-        const path = appDir + '/stories/' + story.id + '/';
-        let completed = await getScore({sid, ssid, order, path});
-        console.log('completed', completed);
-        console.log('index', index);
-        mselected = (completed && completed > 0) ? completed : 1;
-        this.setState({completed: parseInt(completed), selected: parseInt(mselected)});
-      } catch (e) {
-        console.log(e);
-      }
-
-  }
   toggleButtonAudio = () => this.setState({buttonaudioPaused: !this.state.buttonaudioPaused})
   togglePlaySound = () => this.setState({audioPaused: !this.state.audioPaused})
   activateAR = () => this.setState({imageTracking: true})
   next = async () => {
-    let {appDir, debug_mode, server, position, story, selected, completed, distance} = this.state;
-    const index = parseInt(this.props.navigation.getParam('index'));
+    let {appDir, debug_mode, server, position, index, story, selected, completed, distance} = this.state;
+
+    //const index = parseInt(this.props.navigation.getParam('index'));
     console.log('index', index);
     let newIndex = (index < (story.stages.length-1)) ? (index+1) : null;
     const sid = story.id;
     const ssid = story.stages[index].id;
     const order = story.stages[index].stageOrder;
     const path = appDir + '/stories/' + story.id + '/';
+    completed = newIndex;
     console.log('completed', completed);
     console.log('index', index);
     if (newIndex) {
       console.log('new index', newIndex);
       // get history from file
       try  {
-        await addNewIndex({sid, ssid, order, path , newIndex });
+        await addNewIndex({sid, ssid, order, path , newIndex, completed });
         // clean audio
-        await this.setState({imageTracking: false, buttonaudioPaused: true, audioPaused: true, timeout: 0, finishAll: false});
-        (this.woosh) ? this.woosh.release() : '';
-        return await this.props.navigation.navigate('ToPath', {screenProps: this.props.screenProps, story: this.state.story, index: index, distance: distance} );
+        this.setState({imageTracking: false,finishAll: false, navigatorType : UNSET, buttonaudioPaused: true, audioPaused: true, timeout: 0});
+        if(this.woosh) this.woosh.release();
+        return await this.props.navigation.push('ToPath', {screenProps: this.props.screenProps, story: story,  distance: distance} );
       } catch(e) {
         console.log(e);
       }
     } else {
       newIndex = story.stages.length;
-      await addNewIndex({sid, ssid, order, path , newIndex });
+      await addNewIndex({sid, ssid, order, path , newIndex, completed });
       if(!debug_mode) {
         const name="Finish story";
         const AppDir = appDir;
         const extra = await getScores(path);
         await setStat(name, sid, ssid , debug_mode, server, AppDir, position, extra);
       }
-      await this.setState({finishAll: false, navigatorType : UNSET, buttonaudioPaused: true, audioPaused: true, timeout: 0});
-
-      return await this.props.navigation.navigate('StoryComplete', {screenProps: this.props.screenProps, story: this.state.story, index: 0} );
+      return await this.props.navigation.navigate('StoryComplete', {screenProps: this.props.screenProps, story: story, index: 0} );
     }
 
   }
@@ -257,6 +270,9 @@ export default class ToAR extends Component {
   // if you are building a specific type of experience.
   render() {
     const { distance, debug_mode, imageTracking, finishAll, selected,  buttonaudioPaused, audioPaused, audioMuted, sharedProps, server, story, stage, sceneType, index, appDir } = this.state;
+    console.log('index',index);
+    const theme = story.theme;
+    if(index === null || !this.props.isFocused) return null;
     let params = {
       sharedProps: sharedProps,
       server: server,
@@ -286,48 +302,67 @@ export default class ToAR extends Component {
       togglePlaySound: this.togglePlaySound,
       toggleButtonAudio: this.toggleButtonAudio,
     };
-    const storyReload = () => <Icon size={30} name='reload' type='booksonwall' color='#fff' onPress={() => this.reload()} />;
+    const storyReload = () => <Icon size={30} name='reload' type='booksonWall' color='#fff' onPress={() => this.reload()} />;
     const sound = () => {
       if(buttonaudioPaused && !audioPaused) {
-        return <Icon size={30} name='pause' type='booksonwall' color='#fff' onPress={() => this.togglePlaySound()} />;
+        return <Icon size={30} name='pause' type='booksonWall' color='#fff' onPress={() => this.togglePlaySound()} />;
       } else if(buttonaudioPaused && audioPaused) {
-        return <Icon size={30} name='play' type='booksonwall' color='#fff' onPress={() => this.togglePlaySound()} />;
+        return <Icon size={30} name='play' type='booksonWall' color='#fff' onPress={() => this.togglePlaySound()} />;
       } else {
         return null;
       }
     };
-    const storyMap = () => (debug_mode) ? <Icon size={30} name='geopoint' type='booksonwall' color='#fff' onPress={() => this.map()} /> : '';
-    const storyNext = () => <Icon size={30} name='right-arrow' type='booksonwall' color='#fff' onPress={(e) => this.next()} />;
-    const arButtons = [ { element: storyReload }, { element: storyMap }, { element: sound}, { element: storyNext} ];
+    const storyMap = () =>  <Icon size={30} name='geopoint' type='booksonWall' color='#fff' onPress={() => this.map()} /> ;
+    const storyNext = () => <Icon size={30} name='rightArrow' type='booksonWall' color='#fff' onPress={(e) => this.next()} />;
+    const arButtons = [];
+    arButtons.push({ element: storyReload });
+
+    if(debug_mode) arButtons.push({ element: storyMap });
+    arButtons.push({ element: sound});
+    arButtons.push({ element: storyNext});
     const arScene = {
       'vip':  { scene: VIP },
       'vaap':  { scene: VAAP },
       'vaamp':  { scene: VAAMP },
       'portal':  { scene: PORTAL},
       'piv': { scene: PIV},
-      'psiv': { scene: PSIV}
+      'psiv': { scene: PSIV},
+      'gps': { scene: GPS}
     };
-    let types = ['null','vip', 'vaap', 'vaamp', 'portal', 'piv', 'psiv'];
+    let types = ['null','vip', 'vaap', 'vaamp', 'portal', 'piv', 'psiv', '3D','gps', 'totem'];
     let type = (stage.scene_type) ? types[stage.scene_type] : 'vip';
     console.log(type);
     console.log(arScene[type]);
     console.log('index', index);
     console.log('selected', selected);
-    return (
-      // options shadowsEnabled={true} bloomEnabled={true} hdrEnabled={true} bugged on my LG Q6
-      // ref={(component) => {this.nav = component}} do we need ref ?
-      <SafeAreaView style={styles.mainContainer}>
-        {debug_mode && 1===2 && <DebugArea style={{position: 'absolute', zIndex: 1001}} distance={distance} debug={debug_mode} />}
+    const btnStyle = {
+      backgroundColor: 'transparent', borderWidth: 0, borderColor: '#4B4F53', margin: 0, minHeight: 44, maxHeight: 44
+    };
+    const selectedBtnStyle = {
+      backgroundColor: theme.color1
+    };
+    const containerStyle = {
+      flex: 1, borderWidth: 0, borderColor: '#4B4F53', minHeight: 44, maxHeight: 44, backgroundColor: '#750000', borderRadius: 0, margin: 0, padding: 0
+    };
+    const innerBorderStyle = {
+      color: '#570402'
+    };
+    // options shadowsEnabled={true} bloomEnabled={true} hdrEnabled={true} bugged on my LG Q6
+    // ref={(component) => {this.nav = component}} do we need ref ?
+    // //  {debug_mode && 1===2 && <DebugArea style={{position: 'absolute', zIndex: 1001}} distance={distance} debug={debug_mode} />}
 
+    return (
+
+      <SafeAreaView style={styles.mainContainer}>
         <ViroARSceneNavigator hdrEnabled {...this.state.sharedProps} viroAppProps={params} initialScene={arScene[type]} style={styles.viroContainer}/>
-        <ButtonGroup style={styles.menu}
-          buttonStyle={{ backgroundColor: 'transparent', borderWidth: 0, borderColor: '#4B4F53', margin: 0, minHeight: 44, maxHeight: 44}}
+        <ButtonGroup
           onPress={this.updateDlIndex}
           selectedIndex={this.state.arIndex}
-          selectedButtonStyle= {{backgroundColor: '#750000'}}
           buttons={arButtons}
-          containerStyle= {{flex: 1, borderWidth: 0, borderColor: '#4B4F53', minHeight: 44, maxHeight: 44, backgroundColor: '#750000', borderRadius: 0, margin: 0, padding: 0}}
-          innerBorderStyle= {{ color: '#570402' }}
+          selectedButtonStyle={selectedBtnStyle}
+          buttonStyle={btnStyle}
+          containerStyle={containerStyle}
+          innerBorderStyle={innerBorderStyle}
           />
       </SafeAreaView>
     );
@@ -337,13 +372,14 @@ export default class ToAR extends Component {
 var styles = StyleSheet.create({
   mainContainer: {
     flex : 1,
-    backgroundColor: "#750000",
+    backgroundColor: '#750000'
   },
   menu: {
-    backgroundColor: "#750000",
+    backgroundColor: '#750000'
   },
   viroContainer :{
     flex : 1,
-    backgroundColor: "#750000",
+    backgroundColor: '#750000'
   }
 });
+export default withNavigationFocus(ToAR);

@@ -16,6 +16,7 @@ import Toast from 'react-native-simple-toast';
 import { Banner } from '../../../assets/banner';
 import NetInfo from "@react-native-community/netinfo";
 import RNFetchBlob from 'rn-fetch-blob';
+import BgApp from '../../../assets/story/Bg-APP.png';
 
 function wait(timeout) {
   return new Promise(resolve => {
@@ -56,7 +57,7 @@ ListStories = (props) => {
   };
  let stories = props.stories.map ((story) => {
      story['theme'] = (story.theme) ? story.theme : default_theme;
-     story['banner_default'] = (story.theme && story.theme.banner.filePath) ? {uri: story.theme.banner.filePath} : Banner['banner_default'];
+     story['banner_default'] = (story.theme && story.theme.banner.filePath) ? {uri: story.theme.banner.filePath} : {source: Banner['BannerDefault']};
      return story;
  });
 
@@ -64,7 +65,9 @@ ListStories = (props) => {
 
       <View >
       {
-        stories.map((story, i) => (
+        stories.map((story, i) => {
+          const banner = story.design_options;
+          return (
           <TouchableOpacity key={'tb'+i} onPress={() => props.navigate('Story', {story: story, storiesUpdate: props.storiesUpdate})}>
             <ImageBackground key={'b'+i} source={story.banner_default} imageStyle={{opacity: .6}} style={{width: '100%', height: 'auto', backgroundColor: story.theme.color1}}>
               <ListItem
@@ -81,7 +84,7 @@ ListStories = (props) => {
               />
               </ImageBackground>
               </TouchableOpacity>
-      ))
+      )})
       }
       </View>
 
@@ -302,17 +305,19 @@ export default class Stories extends Component {
       );
     }
     const size = 36;
+    const {theme} = this.state;
+
     return (
       <ThemeProvider>
         <SafeAreaView style={styles.container} forceInset={{ top: 'always', bottom: 'always' }}>
-        <ImageBackground  style={{width: 'auto', height: '100%', backgroundColor: '#C8C1B8'}} >
-          <Header
+        <Header
             containerStyle={{ backgroundColor: '#C8C1B8', justifyContent: 'space-around', paddingBottom: 23 }}
-            centerComponent={<Icon name='bow-logo' size={22} containerStyle={styles.logoContainer} style={styles.logo}/>}
+            centerComponent={<Icon name='bowLogo' size={28} containerStyle={styles.logoContainer} style={styles.logo}/>}
             rightComponent={<TouchableOpacity style={styles.reload}  onPress={() => this.storiesUpdate()}>
-            <Button type='clear' underlayColor='#FFFFFF' loading={this.state.loading} onPress={() => this.storiesUpdate()} iconContainerStyle={{ height: 26, width: 26}} icon={{name:'reload', size:24, color:'#887B72', type:'booksonwall'}} ></Button>
+            <Button type='clear' underlayColor='#FFFFFF' loading={this.state.loading} onPress={() => this.storiesUpdate()} iconContainerStyle={{ height: 32, width: 32}} icon={{name:'reload', size:32, color:'#887B72', type:"BooksonWall"}} ></Button>
             </TouchableOpacity>}
             />
+            <ImageBackground source={BgApp} style={{width: '100%', height: 'auto', resizeMode: "cover", justifyContent: "center"}}>
 
           <Card style={styles.card} containerStyle={{padding: 0, margin: 0, borderWidth: 0, backgroundColor: 'transparent'}}>
           <ScrollView refreshControl={<RefreshControl progressBackgroundColor={'#8C1B8'} progressViewOffset={25} refreshing={this.state.reloadLoading} onRefresh={this.storiesUpdate} /> } style={styles.scrollView} onScrollToTop={() => this.storiesUpdate()}>
@@ -321,9 +326,8 @@ export default class Stories extends Component {
               </View>
           </ScrollView>
           </Card>
-          </ImageBackground >
+          </ImageBackground>
         </SafeAreaView>
-
       </ThemeProvider>
     );
   }
@@ -343,6 +347,7 @@ const styles = StyleSheet.create({
   scrollView: {
     marginHorizontal: 0,
     backgroundColor: 'transparent',
+    paddingBottom: 40,
   },
   wrapList: {
     paddingBottom: 85
@@ -380,12 +385,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff'
   },
   reload: {
-    width: 40,
-    height: 40,
+    width: 45,
+    height: 45,
     backgroundColor: 'rgba(0, 0, 0, .12)',
-    borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 0
+    paddingHorizontal: 5,
+    borderRadius: 30,
   }
 });

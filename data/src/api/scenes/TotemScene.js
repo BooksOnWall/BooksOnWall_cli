@@ -15,10 +15,10 @@ import {
 import KeepAwake from 'react-native-keep-awake';
 import I18n from "../../utils/i18n";
 import { Patricie } from './Patricie';
+import TOTEM from '../../../assets/Object/TOBAL v1.obj';
 
 
-
-export default class VipScene extends Component {
+export default class TotemScene extends Component {
   constructor(props) {
     super(props);
     let params = this.props.sceneNavigator.viroAppProps;
@@ -110,19 +110,17 @@ export default class VipScene extends Component {
   buildTrackingTargets = async () => {
     const {pIndex, stage, pictures, storyDir, scene_options} = this.state;
     try {
-        let path = pictures[0].path.replace(" ", "\ ");
         let radius = stage.radius;
-        console.log('vip',scene_options.videos[0]);
         let width = (scene_options.pictures && scene_options.pictures.length >0 ) ? parseFloat(scene_options.pictures[pIndex].width) : 1;
         let height = (scene_options.pictures && scene_options.pictures.length >0 ) ? parseFloat(scene_options.pictures[pIndex].height) : 1;
-        path = 'file://' + this.state.storyDir + path.replace("assets/stories", "");
+        //let path = 'file://' + this.state.storyDir + path.replace("assets/stories", "");
         //this.setState({picturePath: path});
         await ViroARTrackingTargets.createTargets({
-          "targetVIP" : {
-            source : { uri: path },
+          "targetTotem" : {
+            source : TOTEM,
             orientation : "Up",
             physicalWidth : width, // real world width in meters
-            type: 'Image'
+            type: 'Object'
           },
         });
 
@@ -250,7 +248,7 @@ export default class VipScene extends Component {
            onFinish={this.onFinishSound}
            onError={this.onErrorSound}
         />
-      <ViroARImageMarker visible={imageTracking} target={"targetVIP"} onAnchorFound={this.onAnchorFound}  >
+      <ViroARImageMarker visible={imageTracking} target={"targetTotem"} onAnchorFound={this.onAnchorFound}  >
             <ViroVideo
               source={{uri: videoPath}}
               dragType="FixedToWorld"

@@ -1,8 +1,9 @@
 import React, {Component} from 'react';
 import MapboxGL from '@react-native-mapbox-gl/maps';
-import {Animated, ImageBackground, Dimensions, Platform, View, StyleSheet, Text, TouchableOpacity} from 'react-native';
+import {Animated, ImageBackground, Dimensions, Platform, View, StyleSheet, Text, TouchableOpacity, ActivityIndicator} from 'react-native';
 import {request, check, PERMISSIONS, RESULTS} from 'react-native-permissions';
 import {ButtonGroup, Button, Icon, Badge} from 'react-native-elements';
+import { withNavigationFocus } from 'react-navigation';
 
 import Toast from 'react-native-simple-toast';
 import RouteSimulator from './stage/mapbox-gl/showDirection/RouteSimulator';
@@ -15,6 +16,7 @@ import RNFetchBlob from 'rn-fetch-blob';
 import * as RNFS from 'react-native-fs';
 import PulseCircleLayer from './stage/mapbox-gl/showDirection/PulseCircleLayer';
 
+
 import openIcon from '../../../assets/nav/point1.png';
 import completeIcon from '../../../assets/nav/point2.png';
 import unknownIcon from '../../../assets/nav/point3.png';
@@ -22,7 +24,8 @@ import  distance from '@turf/distance';
 import Geolocation from '@react-native-community/geolocation';
 import {featureCollection, feature} from '@turf/helpers';
 import {lineString as makeLineString, bbox, centroid, polygon} from '@turf/turf';
-// import PulseCircle from './mapbox-gl/PulseCircleLayer';
+// import PulseCircle from './stage/mapbox-gl/PulseCircleLayer';
+import {getScore} from '../stats/score';
 
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
@@ -58,6 +61,20 @@ const circleStyles = {
 };
 
 const layerStyles = {
+  origin: {
+    circleRadius: 40,
+    circleColor: '#750000',
+    circleBlur: .8,
+    circleOpacity: .9,
+
+  },
+  destination: {
+    circleRadius: 40,
+    circleColor: 'black',
+    circleBlur: .8,
+    circleOpacity: .9,
+
+  },
   route: {
     lineColor: 'white',
     lineCap: MapboxGL.LineJoin.Round,
@@ -74,10 +91,12 @@ MapboxGL.setAccessToken(MAPBOX_KEY);
 
 const Header = ({styles, distance, theme, completed, story,  index, showDistance}) => {
   let dis = showDistance();
-  console.log(dis);
   return (
     <View style={styles.header}>
       <ImageBackground source={{uri: theme.banner.filePath}} style={styles.headerBackground}>
+      <TouchableOpacity style={[styles.iconLeft, {backgroundColor: theme.color2, opacity: .8}]}  onPress={() => this.props.navigation.goBack()}>
+        <Button onPress={() => this.props.navigation.goBack()} type='clear' underlayColor={theme.color1} iconContainerStyle={{ marginLeft: 2}} icon={{name:'leftArrow', size:24, color:'#fff', type:'booksonWall'}} />
+      </TouchableOpacity>
       <Badge size="large" badgeStyle={styles.badgeStyle} textStyle={styles.badgeTextStyle} status="success" value={'Completed: ' + completed} containerStyle={{ position: 'absolute', top: 20, right: 20 }}/>
         <Text style={{
           fontSize: 26,
@@ -89,7 +108,7 @@ const Header = ({styles, distance, theme, completed, story,  index, showDistance
           fontFamily: theme.font1}} >{story.title}</Text>
         <Text style={styles.location}>{story.city + ' • ' + story.state}</Text>
         <Text style={styles.complete}>Complete: {(index+1)}/{story.stages.length}</Text>
-        <Text style={styles.complete}>Next in {dis} km </Text>
+        <Text style={styles.complete}>{(dis && dis !=='') ? 'Next in '+dis+' km': ' '}</Text>
       </ImageBackground>
     </View>
   );
@@ -114,8 +133,6 @@ class StoryMap extends Component {
     title: 'Story Map',
     headerShown: false
   };
-
-
   constructor(props) {
     super(props);
     const location = (this.props.navigation.getParam('story')) ? this.props.navigation.getParam('story').geometry.coordinates: null;
@@ -123,26 +140,23 @@ class StoryMap extends Component {
     const routes = stages.map((stage, i) => {
       return {coordinates: stage.geometry.coordinates};
     });
-
     const storyPoints = stages.map((stage, i) => {
       return stage.geometry.coordinates;
     });
     var line = makeLineString(storyPoints);
     var mbbox = bbox(line);
-    const index = this.props.navigation.getParam('index');
     const id = this.props.navigation.getParam('story').id;
-
     this.state = {
       featureCollection: featureCollection([]),
       latitude: null,
       record: null,
+      ssid: null,
       showUserLocation: true,
-      origin: routes[index].coordinates,
-      destination: routes[(index+1)].coordinates,
-      goto: routes[index].coordinates ,
+      origin: null,
+      destination: null,
+      goto: null,
       zoom: 15,
       followUserLocation: false,
-      route: null,
       stages: stages,
       routes: routes,
       mbbox: mbbox,
@@ -156,22 +170,24 @@ class StoryMap extends Component {
       mapTheme: null,
       prevLatLng: null,
       track: null,
-      timeout: 5000,
-      initialPosition: null,
+      timeout: 0,
       fromLat: null,
       fromLong: null,
       toLong: null,
       toLat: null,
-      lastPosition: null,
+      prevIndex: null,
+      position: null,
       debug_mode:  (DEBUG_MODE === "true") ? true: false,
       distance: (this.props.navigation.getParam('distance')) ? this.props.navigation.getParam('distance') : null,
-      radius: 20,
-      selected:1,
+      radius: null,
+      selected: null,
       completed: null,
       selectedMenu: 0,
       offlinePack: null,
-      currentPoint: null,
       routeSimulator: null,
+      route: null,
+      score: null,
+      currentPoint: null,
       styleURL: MapboxGL.StyleURL.Dark, // todo import story map styles
       server: this.props.screenProps.server,
       appName: this.props.screenProps.appName,
@@ -179,56 +195,118 @@ class StoryMap extends Component {
       storyDir: this.props.screenProps.AppDir + '/stories/',
       story: this.props.navigation.getParam('story'),
       theme: this.props.navigation.getParam('story').theme,
-      order: this.props.navigation.getParam('order'),
-      index: index,
-      location: [],
+      order: null,
+      index: null,
+      location: location,
       position: {},
     };
-    console.log('styleURL', this.state.styleURL);
     this.onStart = this.onStart.bind(this);
+    this.getNav = this.getNav.bind(this);
+  }
+  getNav = async () => {
+    const {story, AppDir, routes, location} = this.state;
+      try {
+        console.log('routes',routes);
+        const sid = story.id;
+        const path = AppDir + '/stories/'+sid+'/';
+        let ssid = null;
+        let order= 1;
+        const score = await getScore({sid, ssid, order, path});
+        const index = score.index;
+        const toPath = (score.complete === routes.length) ? false : true;
+        const prevIndex = (index > 0) ? (index-1) : null;
+        const origin = (prevIndex) ? routes[prevIndex].coordinates: location;
+        const radius = parseFloat(story.stages[index].radius);
+        ssid = story.stages[index].id;
+        order = parseInt(story.stages[index].stageOrder);
+        const goto = routes[index].coordinates;
+        const destination = routes[index].coordinates;
+        const fromLat = origin[1];
+        const fromLong = origin[0];
+        const toLat= routes[index].coordinates[1];
+        const toLong= routes[index].coordinates[0];
+        const timeout = 3000;
+        const selected = score.selected;
+        const completed = score.completed;
+
+        this.setState({
+          index: index,
+          toPath: toPath,
+          prevIndex: prevIndex,
+          origin: origin,
+          radius: radius,
+          ssid: ssid,
+          goto: goto,
+          destination: destination,
+          fromLat: fromLat,
+          fromLong: fromLong,
+          toLat: toLat,
+          toLong: toLong,
+          order: order,
+          score: score,
+          timeout: timeout,
+          selected: selected,
+          completed:completed,
+        });
+        console.log('state',this.state);
+        //this.goTo(routes[index].coordinates, false);
+
+      } catch(e) {
+        console.log(e.message);
+      }
   }
   showDistance = () => (this.state.distance) ? this.state.distance : ''
   getMapTheme = async () => {
-    const id = this.state.story.id;
-    const mapThemePath =  this.props.screenProps.AppDir+ '/stories/'+ id +'/map.json';
-    await RNFS.exists(mapThemePath)
-    .then( (exists) => {
-        if (exists) {
-            console.log("Map Theme File exist");
-            // get id from file
-            RNFetchBlob.fs.readFile(mapThemePath, 'utf8')
-            .then((data) => {
-              // handle the
-              const theme =  JSON.parse(data);
-              const style = theme.style;
-              this.setState({ mapTheme: style});
-              return style;
-            })
-        }
-    });
+    const {story, AppDir } = this.state;
+    try {
+      const sid = story.id;
+      const mapThemePath =  AppDir + '/stories/'+ sid +'/map.json';
+      return await RNFS.exists(mapThemePath)
+      .then( (exists) => {
+          if (exists) {
+              console.log("Map Theme File exist");
+              // get id from file
+              return RNFetchBlob.fs.readFile(mapThemePath, 'utf8')
+              .then((data) => {
+                // handle the
+                const theme =  JSON.parse(data);
+                const style = theme.style;
+                return this.setState({ mapTheme: style});
+              })
+          }
+      });
+    } catch(e) {
+      console.log(e.message);
+    }
   }
   onStart() {
-    const routeSimulator = new RouteSimulator(this.state.route);
+    const {route} = this.state;
+    const routeSimulator = new RouteSimulator(route);
     routeSimulator.addListener(currentPoint => this.setState({currentPoint}));
     routeSimulator.start();
     this.setState({routeSimulator});
   }
+  setItinerary = async () => {
+    const {routes, index} = this.state;
+    const reqOptions = {
+      waypoints: routes,
+      profile: 'walking',
+      geometries: 'geojson',
+    };
+
+    const res = await directionsClient.getDirections(reqOptions).send();
+    this.setState({
+      route: makeLineString(res.body.routes[0].geometry.coordinates),
+    });
+    //this.onStart();
+  }
   componentDidMount = async () => {
     try {
+      await this.getNav();
+      await this.getMapTheme();
       await this.offlineLoad();
       MapboxGL.setTelemetryEnabled(false);
-      const reqOptions = {
-        waypoints: this.state.routes,
-        profile: 'walking',
-        geometries: 'geojson',
-      };
-
-      const res = await directionsClient.getDirections(reqOptions).send();
-      await this.history();
-      await this.getMapTheme();
-      this.setState({
-        route: makeLineString(res.body.routes[0].geometry.coordinates),
-      });
+      await this.setItinerary();
       await request(
         Platform.select({
           android: PERMISSIONS.ANDROID.ACCESS_BACKGROUND_LOCATION,
@@ -241,114 +319,153 @@ class StoryMap extends Component {
           ios: PERMISSIONS.IOS.LOCATION_WHEN_IN_USE,
         }),
       );
-      //await findCoordinates();
       await this.getCurrentLocation();
+
     } catch(e) {
       console.log(e);
     }
   }
   cancelTimeout = () => this.setState({timeout: 0})
-  componentWillUnmount() {
-    MapboxGL.offlineManager.unsubscribe('story'+this.state.story.id);
-    this.cancelTimeout();
-    Geolocation.clearWatch(this.watchId);
-    this.watchID = null;
-    if (this.state.routeSimulator) {
-      this.state.routeSimulator.stop();
-
-    }
-  }
-  getCurrentLocation = async () => {
-    const {story, index, timeout} = this.state;
+  componentWillUnmount = async() => {
+    const {routeSimulator, story} = this.state;
     try {
-      // Instead of navigator.geolocation, just use Geolocation.
-      await Geolocation.getCurrentPosition(
-        position => {
-          const initialPosition = position;
-          this.setState({
-            initialPosition,
-            fromLat: position.coords.latitude,
-            fromLong: position.coords.longitude});
-        },
-        error => Toast.showWithGravity(I18n.t("POSITION_UNKNOWN","GPS position unknown, Are you inside a building ? Please go outside."), Toast.LONG, Toast.TOP),
-        { timeout: timeout, maximumAge: 1000, enableHighAccuracy: true},
-      );
-      this.watchID = await Geolocation.watchPosition(position => {
-        this.setState({lastPosition: position,fromLat: position.coords.latitude, fromLong: position.coords.longitude});
-        let from = {
+      await MapboxGL.offlineManager.unsubscribe('story'+story.id);
+      this.cancelTimeout();
+      await Geolocation.clearWatch(this.watchID);
+      this.watchID = null;
+      if (routeSimulator) {
+        await routeSimulator.stop();
+      }
+    } catch(e) {
+      console.log(e.message);
+    }
+
+  }
+  getDistance = async (position, index, story, debug_mode, radius, timeout) => {
+    try {
+      // console.log('accuracy',position.coords.accuracy);
+      // console.log('radius type of', typeof(radius));
+      const precision = (radius + 20);
+      // console.log('precision',precision);
+      this.setState({position: position,fromLat: position.coords.latitude, fromLong: position.coords.longitude});
+      let from = {
+        "type": "Feature",
+        "properties": {},
+          "geometry": {
+            "type": "Point",
+            "coordinates": [this.state.fromLong,this.state.fromLat ]
+          }
+        };
+        let to = {
           "type": "Feature",
           "properties": {},
             "geometry": {
               "type": "Point",
-              "coordinates": [this.state.fromLong,this.state.fromLat ]
+              "coordinates": story.stages[index].geometry.coordinates
             }
           };
-          let to = {
-            "type": "Feature",
-            "properties": {},
-              "geometry": {
-                "type": "Point",
-                "coordinates": story.stages[index].geometry.coordinates
-              }
-            };
-          let units = I18n.t("kilometers","kilometers");
-          let dis = distance(from, to, "kilometers");
-          if (dis) {
-            this.setState({distance: dis.toFixed(2)});
-          };
-      },
+        let units = I18n.t("kilometers","kilometers");
+        let dis = distance(from, to, "kilometers");
+        console.log('timeout', timeout);
+        console.log('dis', dis);
+        if (dis && timeout > 0) {
+          this.setState({distance: dis.toFixed(3)});
+        };
+        //if (dis && radius > 0 && debug_mode === false && (dis*1000) <= radius && timeout > 0) return this.switchToAR();
+    } catch(e) {
+      console.log(e);
+    }
+  }
+  getCurrentLocation = async () => {
+    const {story, debug_mode, index,  timeout} = this.state;
+    const radius = parseFloat(story.radius);
+    try {
+      // Instead of navigator.geolocation, just use Geolocation.
+      await Geolocation.getCurrentPosition(
+        position => {
+          this.setState({
+            position,
+            fromLat: position.coords.latitude,
+            fromLong: position.coords.longitude});
+            this.getDistance(position, index, story, debug_mode, radius, timeout);
+        },
+        error => Toast.showWithGravity(I18n.t("POSITION_UNKNOWN","GPS position unknown, Are you inside a building ? Please go outside."), Toast.LONG, Toast.TOP),
+        { timeout: timeout, maximumAge: 3000, enableHighAccuracy: true},
+      );
+      this.watchID = await Geolocation.watchPosition(position => this.getDistance(position, index, story, debug_mode, radius, timeout),
       error => error => Toast.showWithGravity(I18n.t("POSITION_UNKNOWN","GPS position unknown, Are you inside a building ? Please go outside."), Toast.LONG, Toast.TOP),
-      {timeout: timeout, maximumAge: 1000, enableHighAccuracy: true, distanceFilter: 1},
+      {timeout: timeout, maximumAge: 3000, enableHighAccuracy: true, distanceFilter: 1},
       );
     } catch(e) {
       console.log(e);
     }
   }
+  switchToAR = async () => {
+    const {index, story, unset, debug_mode, distance} = this.state;
+    try {
+      let newIndex = (index <= story.stages.length) ? (parseInt(index)+1) : story.stages.length;
+      await MapboxGL.offlineManager.unsubscribe('story'+story.id);
+      this.cancelTimeout();
+      await Geolocation.clearWatch(this.watchID);
+      this.watchID = null;
+      console.log(newIndex);
+      if (routeSimulator) {
+        await routeSimulator.stop();
+      }
+      await Toast.showWithGravity(I18n.t("Entering_ar","Entering in Augmented Reality ..."), Toast.SHORT, Toast.TOP);
+      this.props.navigation.navigate('ToAr', {screenProps: this.props.screenProps, story: story, index: newIndex, debug: debug_mode, distance: distance});
+    } catch(e) {
+      console.log(e.message);
+    }
+
+  }
   watchID: ?number = null;
   renderRoute() {
-    if (!this.state.route) {
+    const {route} = this.state;
+    if (!route) {
       return null;
     }
 
     return (
-      <MapboxGL.ShapeSource id="routeSource" shape={this.state.route}>
+      <MapboxGL.ShapeSource id="routeSource" shape={route}>
         <MapboxGL.LineLayer
           id="routeFill"
           style={layerStyles.route}
-          belowLayerID="originInnerCircle"
+          belowLayerID="pulse"
           />
       </MapboxGL.ShapeSource>
     );
   }
 
   renderCurrentPoint() {
-    if (!this.state.currentPoint) {
+    const {currentPoint} = this.state;
+    if (!currentPoint) {
       return;
     }
     return (
       <PulseCircleLayer
-        shape={this.state.currentPoint}
-        aboveLayerID="destinationInnerCircle"
+        shape={currentPoint}
+        aboveLayerID="pulse"
         />
     );
   }
 
   renderProgressLine() {
-    if (!this.state.currentPoint) {
+    const {currentPoint, index, route} = this.state;
+    if (!currentPoint || !route) {
       return null;
     }
 
-    const {nearestIndex} = this.state.currentPoint.properties;
-    const coords = this.state.route.geometry.coordinates.filter(
-      (c, i) => i <= nearestIndex,
+    let coords = route.geometry.coordinates.filter(
+      (c, i) => i <= index,
     );
-    coords.push(this.state.currentPoint.geometry.coordinates);
-
+    coords.push(currentPoint);
     if (coords.length < 2) {
       return null;
     }
 
     const lineString = makeLineString(coords);
+
     return (
       <MapboxGL.Animated.ShapeSource id="progressSource" shape={lineString}>
         <MapboxGL.Animated.LineLayer
@@ -391,7 +508,7 @@ class StoryMap extends Component {
   }
   goTo = async (coordinates,followUserLocation ) => {
     try {
-      (this.state.followUserLocation !== followUserLocation) ? await this.followUserLocationToggle() : null;
+      (followUserLocation && this.state.followUserLocation  && this.state.followUserLocation !== followUserLocation) ? await this.followUserLocationToggle() : null;
       await this.setState({zoom: 20});
       await this.setState({goto: coordinates});
     } catch(e) {
@@ -406,40 +523,18 @@ class StoryMap extends Component {
   onUserLocationUpdate = (newUserLocation) => {
     this.setState({position: newUserLocation})
   }
-  history= async () =>  {
-    const {AppDir, routes, index, selected} = this.state;
-    // get history from file
-    const storyHF = AppDir + '/stories/' + this.state.story.id + '/complete.txt';
-    console.log(storyHF);
-    // // check if file exist
-    await RNFS.exists(storyHF)
-    .then( (exists) => {
-        if (exists) {
-            console.log("History File exist");
-            // get id from file
-            RNFetchBlob.fs.readFile(storyHF, 'utf8')
-            .then((data) => {
-              // handle the data ..
-              const toPath = (parseInt(data) === routes.length) ? false : true;
-              this.setState({toPath: toPath, completed: parseInt(data), selected: (parseInt(data))});
-              if (data > 0)   this.goTo(routes[(parseInt(data)-1)].coordinates, false);
-              return data;
-            })
-        } else {
-            console.log("File need to be created with index 1");
-            RNFetchBlob.fs.createFile(storyHF, '0', 'utf8').then(()=>{
-              this.setState({completed: 0});
-              console.log('file created');
-             });
-        }
-    });
-  }
-  enterStage = (e) => {
-    const feature = e.nativeEvent.payload;
-    const index = feature.properties.index;
-    this.goTo(feature.geometry.coordinates);
-    this.props.navigation.navigate('ToAr', {screenProps: this.props.screenProps, story: this.state.story, index: index});
-    Toast.showWithGravity('Enter: '+feature.properties.label, Toast.SHORT, Toast.TOP);
+  enterStage = async (e) => {
+    const {distance} = this.state;
+    try {
+      const feature = e.nativeEvent.payload;
+      const index = feature.properties.index;
+      await this.goTo(feature.geometry.coordinates);
+      //this.props.navigation.navigate('ToAr', {screenProps: this.props.screenProps, story: this.state.story, index: index, distance: distance});
+      Toast.showWithGravity('Enter: '+feature.properties.label, Toast.SHORT, Toast.TOP);
+      this.launchMap(index);
+    } catch(e) {
+      console.log(e.message);
+    }
   }
   renderStages = () => {
     const {theme, completed, selected, routes, index, images} = this.state;
@@ -511,7 +606,7 @@ class StoryMap extends Component {
 
        <MapboxGL.ShapeSource
          id="StagesShapeSource"
-         hitbox={{width: 20, height: 20}}
+         hitbox={{width: 30, height: 30}}
          onPress={this.enterStage}
          shape={features}
          >
@@ -542,29 +637,49 @@ class StoryMap extends Component {
     this.goTo(this.state.routes[id].coordinates, false);
   }
   next = () => {
-    const max = this.state.routes.length;
-    const selected = (parseInt(this.state.selected) < max) ? (parseInt(this.state.selected) + 1) : max;
+    let {routes, selected} = this.state;
+    const max = routes.length;
+    selected = (parseInt(selected) < max) ? (parseInt(selected) + 1) : max;
     this.setState({selected: selected});
     const id = (selected -1);
-    const coords = this.state.routes[id].coordinates;
+    const coords = routes[id].coordinates;
     this.goTo(coords, false);
   }
-  launchMap = () => this.props.navigation.navigate('ToPath', {screenProps: this.props.screenProps, story: this.state.story, distance: distance, index: (this.state.selected > 0) ? (this.state.selected - 1): 0})
-  launchAR = () => this.props.navigation.navigate('ToAr', {screenProps: this.props.screenProps, story: this.state.story, distance: distance, index: (this.state.selected > 0) ? (this.state.selected - 1): 0})
+  launchMap = async (newIndex) => {
+    const {distance , story, selected,index, completed } = this.state;
+    //if(!index) index = this.state.index;
+    try {
+      await MapboxGL.offlineManager.unsubscribe('story'+story.id);
+      this.cancelTimeout();
+      console.log('newIndex', newIndex);
+      console.log('complete',completed);
+      await Geolocation.clearWatch(this.watchID);
+      this.watchID = null;
+      newIndex = (newIndex && newIndex <= (completed -1)) ? newIndex : index;
+      console.log('newIndex', newIndex);
+      console.log('index', index);
+      this.props.navigation.push('ToPath', {screenProps: this.props.screenProps, story: story, distance: distance, index: newIndex});
+    } catch(e) {
+      console.log(e.message);
+    }
+  }
+  launchAR = () => {
+    const {distance , story, selected, index} = this.state;
+    this.props.navigation.navigate('ToAr', {screenProps: this.props.screenProps, story: story, distance: distance, index: (selected > 0) ? (selected - 1): 0});
+  }
   render() {
-
-    const {index, routes , toPath, toAR, distance, debug_mode, styleURL, selected, selectedMenu, completed, theme, story, mapTheme} = this.state;
-    if(!mapTheme) return false;
-    if(distance && distance !== null && (distance*1000 <= story.stages[index].radius)) this.launchAR();
-    const storyPrev = () =>  <Icon size={30} name='left-arrow' type='booksonwall' color='#fff' onPress={() => this.prev()} />;
-    const storyMapLine = () => <Icon size={30} name='map-line' type='booksonwall' color='#fff' onPress={() => this.launchMap()} />
-    const launchAR = () => <Icon size={30} name='bow-isologo' type='booksonwall' color='#fff' onPress={() => this.launchAR()} />
-    const storyNext = () => <Icon size={30} name='right-arrow' type='booksonwall' color='#fff' onPress={() => this.next()} />;
+    const { navigate } = this.props.navigation;
+    const {index, location, routes , goto,  toPath, toAR, distance, debug_mode, styleURL, selected, selectedMenu, completed, theme, story, mapTheme} = this.state;
+    if(!mapTheme || !this.props.isFocused ) return <ActivityIndicator style={{flex: 1, backgroundColor: theme.color2, justifyContent: 'center'}} size="large" color={theme.color1} />;
+    const storyPrev = () =>  <Icon size={30} name='leftArrow' type='booksonWall' color='#fff' onPress={() => this.prev()} />;
+    const storyMapLine = () => <Icon size={30} name='mapLine' type='booksonWall' color='#fff' onPress={() => this.launchMap()} />
+    const launchAR = () => <Icon size={30} name='isologo' type='booksonWall' color='#fff' onPress={() => this.launchAR()} />
+    const storyNext = () => <Icon size={30} name='rightArrow' type='booksonWall' color='#fff' onPress={() => this.next()} />;
     let MenuButtons = [];
      if (selected > 0) MenuButtons.push({ element: storyPrev });
      if (debug_mode === true && toAR) MenuButtons.push({ element: launchAR });
      if (toPath) MenuButtons.push({ element: storyMapLine });
-     if (selected !== routes.length) MenuButtons.push({ element: storyNext});
+     if (selected !== (routes.length)) MenuButtons.push({ element: storyNext});
      const styles = StyleSheet.create({
        buttonCnt: {
          flexDirection: 'row',
@@ -609,6 +724,7 @@ class StoryMap extends Component {
          shadowOffset: { width: 0, height: 9 },
          shadowOpacity: 0.9,
          shadowRadius: 0,
+         zIndex: 1200,
          elevation: 1,
         },
        containerMenu: {
@@ -632,13 +748,20 @@ class StoryMap extends Component {
        headerBackground: {
          flex: 0,
          padding: 40,
-
        },
        badgeStyle:{
          backgroundColor: theme.color1
        },
        badgeTextStyle: {
          fontSize: 9,
+       },
+       iconLeft: {
+         width: 45,
+         height: 45,
+         borderRadius: 30,
+         justifyContent: 'center',
+         alignItems: 'center',
+         padding: 0,
        }
      });
     return (
@@ -652,6 +775,7 @@ class StoryMap extends Component {
           showDistance={this.showDistance}
           index={index}
         />
+
         <MapboxGL.MapView
           logoEnabled={false}
           compassEnabled={false}
@@ -672,8 +796,13 @@ class StoryMap extends Component {
             followUserMode='compass'
             onUserTrackingModeChange={false}
             />
-            {this.renderStages()}
+
+          {this.renderStages()}
+          {this.renderRoute()}
+          {/*this.renderProgressLine()*/}
         </MapboxGL.MapView>
+
+
         <Footer
           MenuButtons={MenuButtons}
           selectedMenu={selectedMenu}
@@ -685,4 +814,4 @@ class StoryMap extends Component {
   }
 }
 
-export default StoryMap;
+export default withNavigationFocus(StoryMap);
