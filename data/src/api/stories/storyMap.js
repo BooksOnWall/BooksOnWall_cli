@@ -89,13 +89,13 @@ const layerStyles = {
 
 MapboxGL.setAccessToken(MAPBOX_KEY);
 
-const Header = ({styles, distance, theme, completed, story,  index, showDistance}) => {
+const Header = ({styles, distance, theme, completed, story,  index, showDistance, navigation, screenProps}) => {
   let dis = showDistance();
   return (
     <View style={styles.header}>
       <ImageBackground source={{uri: theme.banner.filePath}} style={styles.headerBackground}>
-      <TouchableOpacity style={[styles.iconLeft, {backgroundColor: theme.color2, opacity: .8}]}  onPress={() => this.props.navigation.goBack()}>
-        <Button onPress={() => this.props.navigation.goBack()} type='clear' underlayColor={theme.color1} iconContainerStyle={{ marginLeft: 2}} icon={{name:'leftArrow', size:24, color:'#fff', type:'booksonWall'}} />
+      <TouchableOpacity style={[styles.iconLeft, {backgroundColor: theme.color2, opacity: .8}]}  onPress={() => navigation.push('Story', {screenProps, story})}>
+        <Button onPress={() => navigation.push('Story', {screenProps, story})} type='clear' underlayColor={theme.color1} iconContainerStyle={{ marginLeft: 2}} icon={{name:'leftArrow', size:24, color:'#fff', type:'booksonWall'}} />
       </TouchableOpacity>
       <Badge size="large" badgeStyle={styles.badgeStyle} textStyle={styles.badgeTextStyle} status="success" value={'Completed: ' + completed} containerStyle={{ position: 'absolute', top: 20, right: 20 }}/>
         <Text style={{
@@ -107,7 +107,7 @@ const Header = ({styles, distance, theme, completed, story,  index, showDistance
           textShadowRadius: 2,
           fontFamily: theme.font1}} >{story.title}</Text>
         <Text style={styles.location}>{story.city + ' • ' + story.state}</Text>
-        <Text style={styles.complete}>Complete: {(index+1)}/{story.stages.length}</Text>
+        <Text style={styles.complete}>Complete: {completed}/{story.stages.length}</Text>
         <Text style={styles.complete}>{(dis && dis !=='') ? 'Next in '+dis+' km': ' '}</Text>
       </ImageBackground>
     </View>
@@ -528,6 +528,7 @@ class StoryMap extends Component {
     try {
       const feature = e.nativeEvent.payload;
       const index = feature.properties.index;
+      console.log('index', index);
       await this.goTo(feature.geometry.coordinates);
       //this.props.navigation.navigate('ToAr', {screenProps: this.props.screenProps, story: this.state.story, index: index, distance: distance});
       Toast.showWithGravity('Enter: '+feature.properties.label, Toast.SHORT, Toast.TOP);
@@ -648,16 +649,12 @@ class StoryMap extends Component {
   launchMap = async (newIndex) => {
     const {distance , story, selected,index, completed } = this.state;
     //if(!index) index = this.state.index;
+    console.log('selected index', newIndex);
     try {
       await MapboxGL.offlineManager.unsubscribe('story'+story.id);
       this.cancelTimeout();
-      console.log('newIndex', newIndex);
-      console.log('complete',completed);
       await Geolocation.clearWatch(this.watchID);
       this.watchID = null;
-      newIndex = (newIndex && newIndex <= (completed -1)) ? newIndex : index;
-      console.log('newIndex', newIndex);
-      console.log('index', index);
       this.props.navigation.push('ToPath', {screenProps: this.props.screenProps, story: story, distance: distance, index: newIndex});
     } catch(e) {
       console.log(e.message);
@@ -774,6 +771,8 @@ class StoryMap extends Component {
           styles={styles}
           showDistance={this.showDistance}
           index={index}
+          screenProps={this.props.screenProps}
+          navigation={this.props.navigation}
         />
 
         <MapboxGL.MapView

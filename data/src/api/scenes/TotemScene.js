@@ -5,7 +5,7 @@ import {SafeAreaView, StyleSheet} from 'react-native';
 import {
   ViroConstants,
   ViroARScene,
-  ViroARImageMarker,
+  ViroARObjectMarker,
   ViroMaterials,
   ViroVideo,
   ViroSound,
@@ -15,7 +15,7 @@ import {
 import KeepAwake from 'react-native-keep-awake';
 import I18n from "../../utils/i18n";
 import { Patricie } from './Patricie';
-import TOTEM from '../../../assets/Object/TOBAL v1.obj';
+import TOTEM from '../../../assets/object/TOBAL v1.obj';
 
 
 export default class TotemScene extends Component {
@@ -248,7 +248,7 @@ export default class TotemScene extends Component {
            onFinish={this.onFinishSound}
            onError={this.onErrorSound}
         />
-      <ViroARImageMarker visible={imageTracking} target={"targetTotem"} onAnchorFound={this.onAnchorFound}  >
+      <ViroARObjectMarker visible={imageTracking} target={"targetTotem"} onAnchorFound={this.onAnchorFound}  >
             <ViroVideo
               source={{uri: videoPath}}
               dragType="FixedToWorld"
@@ -267,7 +267,7 @@ export default class TotemScene extends Component {
               onError={this.onVideoError}
               materials={["chromaKeyFilteredVideo"]}
             />
-        </ViroARImageMarker>
+        </ViroARObjectMarker>
         {(MatchAudioPath) ?
           <ViroSound
              paused={MatchAudioPaused}
