@@ -209,6 +209,7 @@ export default class Stories extends Component {
       })
       .then(data => {
           if(data) {
+            console.log('stories', data.stories);
             return this.storeStories(data.stories);
           } else {
             Toast.showWithGravity(I18n.t("NO_DATA","No Data received from the server"), Toast.LONG, Toast.TOP);
@@ -223,10 +224,12 @@ export default class Stories extends Component {
     }
   }
   storeStories = async (stories) => {
+    console.log('stories',stories);
     try {
       // create banner folder
       const bannerPath = this.state.appDir+'/banner';
       let sts = [];
+      console.log('sts', stories);
       await RNFetchBlob.fs.exists(bannerPath)
       .then( (exists) => {
           if (exists === false) {
@@ -238,13 +241,14 @@ export default class Stories extends Component {
               });
           }
       });
+      console.log('test');
       // check each story and install story banner
       // downloading banners and added mobile storage path for banner
 
       stories.map((story, i) => {
         let st = story;
         if (story.design_options) {
-          let theme = JSON.parse(story.design_options);
+          let theme = story.design_options;
           theme = (typeof(theme) === 'string') ? JSON.parse(theme) : theme;
           st['theme'] = theme;
           const path = theme.banner.path;
@@ -269,6 +273,7 @@ export default class Stories extends Component {
         }
         sts.push(st);
       });
+
       // store stories list in Stories.json file
       await RNFS.writeFile(this.state.appDir+'/Stories.json', JSON.stringify(sts), 'utf8')
       .then((success) => {

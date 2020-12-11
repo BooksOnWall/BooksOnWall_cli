@@ -20,9 +20,10 @@ import Geolocation from '@react-native-community/geolocation';
 // import PulseCircle from './mapbox-gl/PulseCircleLayer';
 // import audio lib
 import Sound from 'react-native-sound';
-import openIcon from '../../../../assets/nav/point1.png';
-import completeIcon from '../../../../assets/nav/point2.png';
-import unknownIcon from '../../../../assets/nav/point3.png';
+
+import openIcon from '../../../../assets/nav/p1.png';
+import completeIcon from '../../../../assets/nav/p2.png';
+import unknownIcon from '../../../../assets/nav/p3.png';
 
 import {getScore, addNewIndex} from '../../stats/score';
 
@@ -49,8 +50,8 @@ const iconstyles = {
       'match',
       ['get', 'icon'],
       'completeIcon',
-      1.4,
-      /* default */ 1.4,
+      .6,
+      /* default */ .7,
     ],
   },
 };
@@ -96,7 +97,6 @@ const Header = ({styles, position, navigate, isFocused, switchToAR, distance, th
       <Text style={styles.texto} >{story.title}</Text>
       <Text style={styles.location}>{story.city + ' • ' + story.state}</Text>
       <Text style={styles.complete}>Complete: {completed}/{story.stages.length} {(parseFloat(distance)*1000)}m</Text>
-      <Text style={styles.complete}>{(position && position.coords && position.coords) ? JSON.stringify(position.coords.accuracy.toFixed(2)) : ''}</Text>
     </ImageBackground>
   </View>
 );
@@ -124,6 +124,47 @@ class ToPath extends Component {
 
     const sid = this.props.navigation.getParam('story').id;
     const path = this.props.screenProps.AppDir + '/stories/'+sid+'/';
+
+    const theme = this.props.navigation.getParam('story').theme;
+    const iconstyles = {
+      icon: {
+        iconImage: ['get', 'icon'],
+        iconOptional: true,
+        textIgnorePlacement: true,
+        textField: '{label}',
+        textSize: 23,
+        textMaxWidth: 50,
+        textColor: '#FFF',
+        textAnchor: 'center',
+        textAllowOverlap: true,
+        iconSize: [
+          'match',
+          ['get', 'icon'],
+          'completeIcon',
+          .6,
+          /* default */ .5,
+        ],
+      },
+    };
+    const circleStyles = {
+      innerCircle: {
+        circleStrokeWidth: 3,
+        circleStrokeColor: theme.color2,
+        circleRadius: 5,
+        circleColor: theme.color2,
+        circleBlur: .5,
+        circleOpacity: .9,
+
+      },
+      innerCirclePulse: {
+        circleStrokeWidth: 3,
+        circleStrokeColor: theme.color2,
+        circleRadius: 2,
+        circleColor: theme.color2,
+        circleBlur: .5,
+        circleOpacity: .8,
+      },
+    }
 
     this.state = {
       prevLatLng: null,
@@ -734,7 +775,8 @@ class ToPath extends Component {
     const {story, index, storyDir} = this.state;
     // if we arrive in first stage , no audio can be played as there is no previous onZoneLeave
     const prevIndex = index -1;
-    const stage = (index === 0) ? null : story.stages[prevIndex];
+    let stage = (index === 0) ? null : story.stages[prevIndex];
+    stage.onZoneLeave = (typeof(stage.onZoneLeave) === 'string') ? JSON.parse(stage.onZoneLeave): stage.onZoneLeave;
     if (stage) {
       const count =  (stage && stage.onZoneLeave) ? stage.onZoneLeave.length : 0;
       this.setState({audioButton: true});

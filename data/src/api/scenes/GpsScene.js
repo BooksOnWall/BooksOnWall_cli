@@ -25,6 +25,8 @@ export default class GpsScene extends Component {
     this.goToMap = params.goToMap;
     this.next = params.next;
     // Set initial state here
+    let scene_options = (typeof(params.stage.scene_options) === 'string') ? JSON.parse(params.stage.scene_options) : params.stage.scene_options;
+
     this.toogleButtonAudio = params.toggleButtonAudio;
     this.state = {
       server: params.server,
@@ -34,7 +36,7 @@ export default class GpsScene extends Component {
       story: params.story,
       index: params.index,
       pIndex: 0,
-      scene_options: params.stage.scene_options,
+      scene_options: scene_options,
       stage: params.stage,
       pictures: params.pictures,
       picturePath: "",
@@ -108,12 +110,13 @@ export default class GpsScene extends Component {
   dispatchMedia = async () => {
     try  {
       const {story, index, storyDir} = this.state;
-      const stage =  story.stages[index];
+      let stage =  story.stages[index];
+      stage.onZoneEnter = (typeof(stage.onZoneEnter) === 'string') ? JSON.parse(stage.onZoneEnter) : stage.onZoneEnter;
+      stage.onPictureMatch = (typeof(stage.onPictureMatch) === 'string') ? JSON.parse(stage.onPictureMatch) : stage.onPictureMatch;
       let audios = [];
       let videos = [];
       audios['onZoneEnter'] = (stage.onZoneEnter && stage.onZoneEnter.length > 0 ) ? stage.onZoneEnter.filter(item => item.type === 'audio'): null;
       audios['onPictureMatch'] = (stage.onPictureMatch && stage.onPictureMatch.length > 0) ? stage.onPictureMatch.filter(item => item.type === 'audio') : null;
-      videos['onZoneEnter'] = (stage.onZoneEnter && stage.onZoneEnter.length > 0 ) ? stage.onZoneEnter.filter(item => item.type === 'video') : null;
       videos['onPictureMatch'] = (stage.onPictureMatch && stage.onPictureMatch.length > 0) ? stage.onPictureMatch.filter(item => item.type === 'video') : null;
 
       this.setState({audios: audios, videos: videos});
@@ -144,7 +147,7 @@ export default class GpsScene extends Component {
       const video =  videos.onPictureMatch[0];
       if (video) {
         let path = video.path.replace(" ", "\ ");
-        path = 'file://' + storyDir + path.replace("assets/stories", "");
+        path = 'file://' + storyDir + path.replace("assets/stories/", "");
         let loop = video.loop;
         this.setState({'videoPath': path, 'videoLoop': loop});
       }
@@ -201,6 +204,8 @@ export default class GpsScene extends Component {
     const {audioPaused, audioMuted} = this.props.sceneNavigator.viroAppProps;
     console.log('audioPaused', audioPaused);
     console.log('MatchAudioPath',MatchAudioPath);
+    console.log('scene_options videos',scene_options.videos);
+    console.log('typeof scene_options', typeof(scene_options));
     const font = String(theme.font3,theme.font2,theme.font1);
     const textColor = String(color);
     console.log('videoPath', videoPath);
@@ -216,7 +221,7 @@ export default class GpsScene extends Component {
            onFinish={this.onFinishSound}
            onError={this.onErrorSound}
         />
-      <ViroARPlane width={parseFloat(scene_options.videos[0].width)} minHeight={parseFloat(scene_options.videos[0].height)} minWidth={parseFloat(scene_options.videos[0].width)} alignment={"Horizontal"}>
+
           <ViroVideo
             source={{uri: videoPath}}
             dragType="FixedToWorld"
@@ -226,15 +231,14 @@ export default class GpsScene extends Component {
             muted={false}
             paused={false}
             loop={videoLoop}
-            position={[0,0,0]}
-            rotation={[-90,0,0]}
+            position={[0,0,-2.5]}
+            rotation={[0,0,0]}
             opacity={1}
             onBufferStart={this.onBufferStart}
             onFinish={this.onFinishVideo}
             onError={this.onVideoError}
             materials={["chromaKeyFilteredVideo"]}
           />
-        </ViroARPlane>
 
         <Patricie
           animate={{name: 'movePicture', run: finishAll, loop: false}}
